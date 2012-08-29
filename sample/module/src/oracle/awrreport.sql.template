@@ -1,0 +1,5 @@
+define begin_snap=@beginsnapid@
+define end_snap=@endsnapid@
+define report_type='@reporttype@'
+define report_name=@reportname@
+@$ORACLE_HOME/rdbms/admin/awrrpt.sql

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<project name="pants.install" default="publish-local" xmlns:ivy="antlib:org.apache.ivy.ant">
+	<property file="build.properties"/>
+	<import file="${pants.build.dir}/common.xml"/>
+	
+	<target name="build" depends="set-revision">
+		<!--
+		<ivy:resolve revision="${ivy.new.revision}"/>
+		<ivy:deliver deliverpattern="distrib/ivys/[artifact].[ext]"/>
+		<ivy:retrieve sync="true" pattern="${lib.dir}/[conf]/[type]/[artifact]-[revision].[ext]" />
+		-->
+    	<mkdir dir="${build.dir}"/>
+		
+		<zip destfile="${build.dir}/${ivy.module}-${ivy.revision}.zip" >
+			<zipfileset dir="${lib.dir}/agent" prefix="agent"/>
+			<zipfileset dir="${lib.dir}/server" prefix="server" />
+		</zip>
+	</target>
+	
+    <target name="publish-shared" depends="build-all" description="--> compile test and publish this project to svn ivy repository">
+    	
+		<ivy:publish   artifactspattern="${build.dir}/[artifact]-[revision].[ext]"
+    	               organisation="${ivy.organisation}"
+			           module="${ivy.module}"
+			           resolver="shared"
+			           pubrevision="${ivy.new.revision}" 
+			           status="integration"
+			           forcedeliver="true"
+			           overwrite="true"
+			           />
+    </target>
+</project>

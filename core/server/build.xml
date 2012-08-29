@@ -1,0 +1,11 @@
+<project name="minicrawler-cases-master" default="publish-local" xmlns:ivy="antlib:org.apache.ivy.ant">
+	<property file="build.properties"/>
+	<import file="${pants.build.dir}/common.xml"/>
+	
+	<target name="build" depends="set-revision">
+    	<mkdir dir="${build.dir}"/>
+		<zip destfile="${build.dir}/${ivy.module}-${ivy.revision}.jar" basedir="${src.dir}" >
+		</zip>
+	</target>
+		
+</project>

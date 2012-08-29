@@ -1,0 +1,25 @@
+SET SERVEROUTPUT ON;
+SET PAGESIZE 60 COLSEP ',' NUMWIDTH 8 LINESIZE 132 VERIFY OFF FEEDBACK OFF
+COLUMN cnt_total FORMAT 999999999
+COLUMN cnt_free FORMAT 999999999
+COLUMN result FORMAT 999.99
+COLUMN message FORMAT A20
+     DECLARE
+       cnt_total NUMBER;
+       cnt_free NUMBER;
+       result NUMBER;
+       message VARCHAR2(256);
+       d_date VARCHAR(20);
+     BEGIN
+	   select to_char(sysdate, 'YYYY/MM/DD HH24:MI:SS') INTO d_date from dual;
+       SELECT COUNT(*) INTO cnt_total FROM X$BH;
+       SELECT COUNT(*) INTO cnt_free FROM X$BH
+         WHERE STATE = 0;
+       result := ROUND((cnt_free / cnt_total), 3) * 100;
+       SELECT DECODE(SIGN(result), 1,
+           'Buffer has enought free',
+           'Not much buffer free left') INTO message
+         FROM DUAL;
+       DBMS_OUTPUT.PUT_LINE(d_date || ',' || result || '%' || ',' || message);
+     END;
+     /

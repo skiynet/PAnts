@@ -1,0 +1,25 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.tasks"/>
+    <configurations defaultconf="build">
+      <conf name="runtime"/>
+      <conf name="build"/>
+      <conf name="test"/>
+    </configurations>
+    <publications>
+    	<artifact name="pants.tasks" type="jar" ext="jar"/>
+    </publications>
+    <dependencies>
+    	<dependency org="org.apache.ant" name="ant" rev="1.8.2" conf="build->default"/>
+    	<dependency org="org.apache.ant" name="ant-antunit" rev="1.2" conf="test->default"/>
+    	
+    	<dependency org="ant-contrib" name="ant-contrib" rev="1.0b3" conf="build,test->default" transitive="false" >
+    		<artifact name="ant-contrib" type="jar" />
+    	</dependency>
+		<dependency org="xml-apis" name="xml-apis" rev="1.4.01" conf="build->default">
+			<artifact name="xml-apis" type="jar" />
+		</dependency>
+		<dependency org="xerces" name="xercesImpl" rev="2.6.2" conf="build->default">
+			<artifact name="xercesImpl" type="jar" />
+		</dependency>
+    </dependencies>
+</ivy-module>

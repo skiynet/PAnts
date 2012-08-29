@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="antserverstart" default="start" basedir="." xmlns:pants="antlib:net.skiy.pants.tasks">
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<property name="propertyfile" value="build.properties.fake"/>
+	<property name="listenport" value="12345"/>
+	<property name="cases.logdir" value="log"/>
+	
+	<target name="start">
+		<pants:antserver port="${listenport}" />
+	</target>
+</project>

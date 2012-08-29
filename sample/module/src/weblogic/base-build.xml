@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="weblogic-base-build" default="help" basedir="./" >
+
+	<property file="${propertyfile}"/>
+	<property name="weblogic.module.dir" value="${ant.file}/.."/>
+	<import file="macro-build.xml"/>
+		
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+
+	<target name="help">
+
+	</target>
+
+	<target name="enableAdminServer">
+		<property name="wls.isJrockit" value="false"/>
+		<property name="wls.admin.noexit" value="true"/>
+		<start-server domainname="${wls.domain.name}" dir="${wls.domain.dir}" host="${wls.admin.host}" port="${wls.admin.port}" extra-server-verbose="${wls.admin.extra-server-verbose}" isJrockit="${wls.isJrockit}" noexit="${wls.admin.noexit}"/>
+	</target>
+
+	<target name="enableManagedServer" description="Up to 2 servers can be started on one server">
+		<groovy>
+			def idlist = ""
+			//println "show properties= ${properties}"
+			properties.each{ 
+				//println "keys: ${id.key}"
+				keyrexeg = (it.key =~ /^wls\.server\.([0-9]+)\.servername$/)
+				if (keyrexeg.matches()) {
+					idlist = idlist + "," + keyrexeg[0][1]
+				}
+			}
+			project.setProperty("serveridlist", "$idlist")
+		</groovy>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<start-managedserver id="@{id}" />
+			</sequential>
+		</for>
+		<!--
+		<propertyset id="serverlist">
+			<propertyref regex="^wls\.server\.[0-9]+\.servername$" />
+		</propertyset>
+		<echo message="${toString:serverlist}"/>
+		<for list="${toString:serverlist}" param="prop">
+			<sequential>
+				<propertyregex property="wls.server.servername"
+							override="true"
+				               input="@{prop}"
+				               regexp="servername=([^\.]*)"
+				               select="\1"/>
+				<propertyregex property="wls.server.host"
+							override="true"
+				               input="@{prop}"
+				               regexp="host=([^\.]*)"
+				               select="\1"/>
+				<propertyregex property="wls.server.post"
+							override="true"
+				               input="@{prop}"
+				               regexp="post=([^\.]*)"
+				               select="\1"/>
+				
+				<start-server dir="${wls.domain.dir}"
+				              isAdmin="false"
+				              servername="${wls.server.servername}"
+				              host="${wls.server.host}"
+				              port="${wls.server.port}"
+				              adminserverurl="http://${wls.admin.host}:${wls.admin.port}" />
+			</sequential>
+		</for>
+		-->
+		<!--
+		<if>
+			<isset property="wls.server1.servername" />
+			<then>
+				<start-server dir="${wls.domain.dir}"
+				              isAdmin="false"
+				              servername="${wls.server1.servername}"
+				              host="${wls.server1.host}"
+				              port="${wls.server1.port}"
+				              adminserverurl="http://${wls.admin.host}:${wls.admin.port}" />
+			</then>
+		</if>
+		<if>
+			<isset property="wls.server2.servername" />
+			<then>
+				<start-server dir="${wls.domain.dir}"
+				              isAdmin="false"
+				              servername="${wls.server2.servername}"
+				              host="${wls.server2.host}"
+				              port="${wls.server2.port}"
+				              adminserverurl="http://${wls.admin.host}:${wls.admin.port}" />
+			</then>
+		</if>
+		-->
+	</target>
+
+	<macrodef name="start-managedserver">
+		<attribute name="id"/>
+		<sequential>
+			<property name="wls.server.@{id}.extra-server-verbose" value="" />
+			<start-server dir="${wls.domain.dir}"
+						  domainname="${wls.domain.name}" 
+			              isAdmin="false"
+			              servername="${wls.server.@{id}.servername}"
+			              host="${wls.server.@{id}.host}"
+			              port="${wls.server.@{id}.port}"
+			              adminserverurl="http://${wls.admin.host}:${wls.admin.port}"
+			              extra-server-verbose="${wls.server.@{id}.extra-server-verbose}"
+			              min-heap="${wls.server.@{id}.min-heap}"
+			              max-heap="${wls.server.@{id}.max-heap}"
+			/>
+		</sequential>
+	</macrodef>
+
+	<target name="disableManagedServer">
+		<groovy>
+			def idlist = ""
+			//println "show properties= ${properties}"
+			properties.each{ 
+				//println "keys: ${id.key}"
+				keyrexeg = (it.key =~ /^wls\.server\.([0-9]+)\.servername$/)
+				if (keyrexeg.matches()) {
+					idlist = idlist + "," + keyrexeg[0][1]
+				}
+			}
+			project.setProperty("serveridlist", "$idlist")
+		</groovy>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<stop-managedserver id="@{id}" />
+			</sequential>
+		</for>
+		<!--
+		<propertyset id="serverlist">
+			<propertyref regex="^wls\.server\.[0-9]+\.servername$" />
+		</propertyset>
+		<echo message="${toString:serverlist}"/>
+		<for list="${toString:serverlist}" param="prop">
+			<sequential>
+				<propertyregex property="wls.server.servername"
+							override="true"
+				               input="@{prop}"
+				               regexp="servername=([^\.]*)"
+				               select="\1"/>
+				<propertyregex property="wls.server.host"
+							override="true"
+				               input="@{prop}"
+				               regexp="host=([^\.]*)"
+				               select="\1"/>
+				<propertyregex property="wls.server.post"
+							override="true"
+				               input="@{prop}"
+				               regexp="post=([^\.]*)"
+				               select="\1"/>
+				
+				<stop-server dir="${wls.domain.dir}"
+				             host="${wls.server.host}"
+				             port="${wls.server.port}"
+				             servername="${wls.server.servername}" />
+			</sequential>
+		</for>
+		-->
+		<!--
+		<if>
+			<isset property="wls.server1.servername" />
+			<then>
+				<stop-server dir="${wls.domain.dir}"
+				             host="${wls.server1.host}"
+				             port="${wls.server1.port}"
+				             servername="${wls.server1.servername}" />
+			</then>
+		</if>
+		<if>
+			<isset property="wls.server2.servername" />
+			<then>
+				<stop-server dir="${wls.domain.dir}"
+				             host="${wls.server2.host}"
+				             port="${wls.server2.port}"
+				             servername="${wls.server2.servername}" />
+			</then>
+		</if>
+		-->
+	</target>
+
+	<macrodef name="stop-managedserver">
+		<attribute name="id"/>
+		<sequential>
+			<stop-server host="${wls.server.@{id}.host}"
+			             port="${wls.server.@{id}.port}"
+			             servername="${wls.server.@{id}.servername}" />
+		</sequential>
+	</macrodef>
+
+	<target name="disableAdminServer">
+		<stop-server host="${wls.admin.host}" port="${wls.admin.port}" servername="AdminServer"/>
+	</target>
+
+	<target name="enableMBeanLogging">
+		<generatewldfmodulefile modulename="${wls.modulename}"
+		                        modulefile="${wls.modulefile}"
+		                        moduleperiod="${wls.moduleperiod}"
+		                        wldf.harvestedtype.selector="${wldf.harvestedtype.selector}" />
+		<wldfmodule-enable admin.host="${wls.admin.host}"
+		                   admin.port="${wls.admin.port}"
+		                   username="${wls.admin.user}"
+		                   passwd="${wls.admin.passwd}"
+		                   modulename="${wls.modulename}"
+		                   modulefile="${wls.modulefile}"
+		                   modulecomment="${wls.modulecomment}" />
+		<!--
+		<executewlst filename="demoharvester.py"/>
+        -->
+	</target>
+
+	<target name="enableApplication">
+	</target>
+	<target name="disableMBeanLogging">
+		<wldfmodule-clear admin.host="${wls.admin.host}"
+		                   admin.port="${wls.admin.port}"
+		                   username="${wls.admin.user}"
+		                   passwd="${wls.admin.passwd}"/>
+	</target>
+
+	<target name="install">
+		<echo>${bea.home}</echo>
+		<echo>${wl.home}</echo>
+	</target>
+
+	<target name="createDomain">
+		<createdomain wls.server.dir="${wls.server.dir}" wls.domain.dir="${wls.domain.dir}" />
+	</target>
+
+	<target name="createServer">
+		<createServer servername="Server1"/>
+	</target>
+
+	<target name="configdomain">
+		<executewlst filename="${basedir}/domain.py"
+		             admin.host="${wls.admin.host}"
+		             admin.port="${wls.admin.port}"
+		             username="${wls.admin.user}"
+		             passwd="${wls.admin.passwd}" />
+	</target>
+	
+	<target name="setServerStartArgs">
+		<groovy>
+			def idlist = ""
+			//println "show properties= ${properties}"
+			properties.each{ 
+				//println "keys: ${id.key}"
+				keyrexeg = (it.key =~ /^wls\.server\.([0-9]+)\.servername$/)
+				if (keyrexeg.matches()) {
+					idlist = idlist + "," + keyrexeg[0][1]
+				}
+			}
+			project.setProperty("serveridlist", "$idlist")
+		</groovy>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<setServerStartArgs-byid id="@{id}" />
+			</sequential>
+		</for>
+	</target>
+		
+	<macrodef name="setServerStartArgs-byid">
+		<attribute name="id"/>
+		<sequential>
+			<setServerStartArgs argline="${wls.server.@{id}.extra-server-verbose}"
+			            servername="${wls.server.@{id}.servername}"
+			             admin.host="${wls.admin.host}"
+			             admin.port="${wls.admin.port}"
+			             username="${wls.admin.user}"
+			             passwd="${wls.admin.passwd}" />
+		</sequential>
+	</macrodef>
+
+	<target name="deploy">
+	</target>
+
+	<target name="exportData">
+		<groovy>
+			def idlist = ""
+			//println "show properties= ${properties}"
+			properties.each{ 
+				//println "keys: ${id.key}"
+				keyrexeg = (it.key =~ /^wls\.server\.([0-9]+)\.servername$/)
+				if (keyrexeg.matches()) {
+					idlist = idlist + "," + keyrexeg[0][1]
+				}
+			}
+			project.setProperty("serveridlist", "$idlist")
+		</groovy>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<exportData-byid id="@{id}" />
+			</sequential>
+		</for>
+	</target>
+
+	<macrodef name="exportData-byid">
+		<attribute name="id" />
+		<sequential>
+			<!--
+			<exportHarvestDataFromServer host="${wls.server.@{id}.host}"
+			                             port="${wls.server.@{id}.port}"
+			                             username="${wls.admin.user}"
+			                             passwd="${wls.admin.passwd}"
+			                             exportfile="${cases.logdir}/harvesetdata.${wls.modulename}.${serverprefix}.@{id}.xml"
+			                             beginoffsetminutes="${wls.harvest.export.beginoffsetmin}"
+			                             endoffsetminutes="${wls.harvest.export.endoffsetmin}" />
+			                             -->
+			<!-- load starttime-mills and endtime-mills -->
+			<property file="${cases.logdir}/${serverprefix}.testtime.log" />
+
+			<exportHarvestDataFromServer host="${wls.server.@{id}.host}"
+			                             port="${wls.server.@{id}.port}"
+			                             username="${wls.admin.user}"
+			                             passwd="${wls.admin.passwd}"
+			                             exportfile="${cases.logdir}/harvesetdata.${wls.modulename}.${serverprefix}.@{id}.xml"
+			                             begintime-mills="${starttime-mills}"
+			                             endtime-mills="${endtime-mills}" />
+			<shapeHarvestExportData exportfile="${cases.logdir}/harvesetdata.${wls.modulename}.${serverprefix}.@{id}.xml" />
+		</sequential>
+	</macrodef>
+
+	<target name="configNodeManager" description="Setup Nodemanager. Do only once">
+		<!-- default settings -->
+		<property name="wls.nodemanager.migration-interface" value=""/>
+		<property name="wls.nodemanager.migration-netmask" value=""/>
+		<setupNodeManagerHome nodemanager.home="${wls.nodemanager.home}"
+		                      nodemanager.address="${wls.nodemanager.address}"
+		                      nodemanager.port="${wls.nodemanager.port}"
+		                      nodemanager.name="${wls.nodemanager.name}"
+		                      javahome="${javahome}"
+		                      nodemanager.migration-interface="${wls.nodemanager.migration-interface}"
+		                      nodemanager.migration-netmask="${wls.nodemanager.migration-netmask}" />
+		<enrollNodeManager admin.host="${wls.admin.host}"
+		                   admin.port="${wls.admin.port}"
+		                   username="${wls.admin.user}"
+		                   passwd="${wls.admin.passwd}"
+		                   domaindir="${wls.domain.dir}"
+		                   nodemanager.home="${wls.nodemanager.home}" />
+	</target>
+
+	<target name="enableNodeManager" description="Start Nodemanager">
+		<startNodeManager nodemanager.home="${wls.nodemanager.home}" nodemanager.address="${wls.nodemanager.address}" nodemanager.port="${wls.nodemanager.port}"/>
+	</target>
+
+	<target name="disableNodeManager" description="Stop Nodemanager">
+		<stopNodeManager nodemanager.port="${wls.nodemanager.port}" />
+	</target>
+</project>

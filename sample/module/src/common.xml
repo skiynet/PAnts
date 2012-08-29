@@ -1,0 +1,170 @@
+<?xml version="1.0"?>
+<project name="common" default="enable" >
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<property name="state.dir" value="${basedir}/state"/>
+
+	<dirname file="${ant.file}" property="module.group.absolute.dir"/>
+	<basename file="${module.group.absolute.dir}" property="module.group"/>
+
+	<property name="state.file" value="${state.dir}/state.properties" />
+	<property name="action.name" value="${ant.project.name}" />
+
+	<macrodef name="mark-state">
+		<attribute name="value"/>
+		<sequential>
+			<echo message="marking @{value}" />
+			<if>
+				<equals arg1="@{value}" arg2="already started" />
+				<then>
+					<!-- date is not overwritten if existing-->
+					<propertyfile file="${state.file}" comment="State File">
+						<entry  key="current-state.${module.group}.${action.name}" value="@{value}"/>
+						<entry  key="current-state-date.${module.group}.${action.name}" type="date" default="now"/>
+					</propertyfile>
+				</then>
+				<else>
+					<!-- date is overwritten -->
+					<propertyfile file="${state.file}" comment="State File">
+						<entry  key="current-state.${module.group}.${action.name}" value="@{value}"/>
+						<entry  key="current-state-date.${module.group}.${action.name}" type="date" value="now"/>
+					</propertyfile>
+				</else>
+			</if>
+
+		</sequential>
+	</macrodef>
+
+	<!-- must set property "started" to invoke mark-started -->
+	<!-- must set property "already-started" at check-impl to invoke mark-already-started -->
+	<target name="enable" depends="-init, -start" />
+
+	<target name="disable" depends="-stop" />
+
+	<target name="check" depends="-check-impl" >
+		<antcall target="-mark-already-started" />
+	</target>
+	
+	<!-- check-impl内でalready-started値を設定している。それを伝搬するには、check-implはantcallではなく、dependsで呼ぶ必要がある　-->
+	<target name="-check-started" if="check-after-start" depends="-check-impl" >
+		<echo message="check-started executed" level="debug" />
+		<fail unless="already-started" message="checked status after start but was not running. start failed" />
+	</target>
+	
+	<target name="-check-stopped" if="check-after-stop" depends="-check-impl" >
+		<echo message="check-stopped executed" level="debug" />
+		<fail if="already-started" message="checked status after stop but was still running. stop failed" />
+	</target>
+	
+	<target name="-mark-already-started" if="already-started" >
+		<mark-state value="already started"/>
+	</target>
+
+	<target name="-mark-started" >
+		<mark-state value="started"/>
+	</target>
+
+	<target name="-mark-failed" >
+		<mark-state value="failed"/>
+	</target>
+	
+	<target name="-mark-stopped" >
+		<mark-state value="stopped"/>
+	</target>
+
+	<target name="-mark-stop-failed" >
+		<mark-state value="stop failed"/>
+	</target>
+
+	<!--
+	<target name="-start" depends="check, -start-impl-wrap, -mark-started, -mark-failed" unless="already-started" />
+	-->
+
+	<target name="-start" depends="check" unless="already-started" >
+		<trycatch property="foo" reference="bar">
+			<try>
+				<antcall target="-start-impl" />
+				<antcall target="-check-started" />
+				<echo message="successful !!" />
+				<antcall target="-mark-started" />
+			</try>
+
+			<catch>
+				<echo message="failed!! error ${foo}" />
+				<property name="failed" value="on" />
+				<antcall target="-mark-failed" />
+			</catch>
+
+			<finally>
+			</finally>
+		</trycatch>
+	</target>
+
+	<!--
+	<target name="-start-impl-wrap">
+		<trycatch property="foo" reference="bar">
+			<try>
+				<antcall target="-start-impl" inheritall="true" />
+				<property name="started" value="on" />
+				<echo message="successful !!" />
+				<antcall target="-mark-started"/>
+			</try>
+
+			<catch>
+				<echo message="failed!!" />
+				<property name="failed" value="on" />
+				<antcall target="-mark-failed"/>
+			</catch>
+
+			<finally>
+			</finally>
+		</trycatch>
+	</target>
+-->
+	
+	<target name="-stop" >
+		<trycatch property="foo" reference="bar">
+			<try>
+				<antcall target="-stop-impl" />
+				<antcall target="-check-stopped" />
+				<echo message="successful !!" />
+				<antcall target="-mark-stopped" />
+			</try>
+
+			<catch>
+				<echo message="failed!! error ${foo}" />
+				<property name="failed" value="on" />
+				<antcall target="-mark-stop-failed" />
+			</catch>
+
+			<finally>
+			</finally>
+		</trycatch>
+	</target>
+
+	<target name="-check-impl">
+		<echo message="Start is not implemented for ${ant.project.name}." />
+	</target>
+
+	<target name="-start-impl">
+		<echo message="Start is not implemented for ${ant.project.name}" />
+	</target>
+
+	<target name="-stop-impl">
+		<echo message="Start is not implemented for ${ant.project.name}" />
+	</target>
+
+	<target name="-init" >
+		<mkdir dir="${state.dir}"/>
+		<basename file="${ant.file}" property="filename" />
+	</target>
+
+	<target name="get-state">
+		<property file="${state.file}" />
+	</target>
+
+	<target name="clear-state" >
+		<delete file="${state.file}"/>
+	</target>
+
+</project>

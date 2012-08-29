@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="jmeter-macro-build" default="" basedir="./" >
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<import file="../util-build.xml"/>
+	
+	<macrodef name="simpledatareport">
+		<attribute name="in"/>
+		<attribute name="out"/>
+		<sequential>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+				cat @{in} | perl ${projecthome}/modules/jmeter/converter.pl > @{out}
+				]]>
+				exit $?
+			</shellscript>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="startjmeterserver">
+		<attribute name="jmeterhome"/>
+		<attribute name="port"/>
+		<attribute name="mem"/>
+		<attribute name="dir"/>
+		<sequential>
+			<echo message="jmeter server start dir: @{dir}"/>
+			<exec dir="@{dir}" spawn="true" executable="@{jmeterhome}/bin/jmeter-server">
+				<env key="SERVER_PORT" value="@{port}"/>
+			</exec>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="stopjmeterserver">
+		<attribute name="port"/>
+		<sequential>
+			<killproc procstring="Dserver_port=@{port}"/>
+		</sequential>
+	</macrodef>
+	
+	
+</project>

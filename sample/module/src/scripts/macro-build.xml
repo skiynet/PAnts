@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="nmon-macro-build" default="" basedir="./" >
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<import file="../util-build.xml"/>
+
+    <macrodef name="startCpuLoadingScript">
+            <attribute name="threadcount"/>
+            <sequential>
+                    <chmod file="${projecthome}/modules/scripts/cpuloadwrap.sh" perm="ug+rx"/>
+                    <chmod file="${projecthome}/modules/scripts/cpuload.sh" perm="ug+rx"/>
+                    <exec spawn="true" executable="${basedir}/modules/scripts/cpuloadwrap.sh" dir="${projecthome}">
+                            <arg line=" @{threadcount}"/>
+                    </exec>
+            </sequential>
+    </macrodef>
+
+	<macrodef name="stopCpuLoadingScript">
+		<sequential>
+			<killproc procstring="cpuload"/>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="executeWget">
+		<attribute name="url"/>
+		<sequential>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+					wget @{url}
+				]]>
+				exit $?
+			</shellscript>
+		</sequential>
+	</macrodef>
+
+</project>

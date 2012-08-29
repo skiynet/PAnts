@@ -1,0 +1,556 @@
+<project name="projectsite" xmlns:gen-env="antlib:net.skiy.pants.server.generate-env">
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<taskdef uri="antlib:net.skiy.pants.server.generate-env"
+	         resource="generate-env.xml"/>
+
+	<property name="projectsite-home" value="${root.dir}/projectsite" />
+	
+	<!--
+	<property file="${root.dir}/site-server.mapping" prefix="sitemapping."/>
+
+
+	<macrodef name="match-site-mapping" description="match site-server.mapping and generate properties">
+		<sequential>
+			<propertyset id="sitemappings">
+				<propertyref regex="^sitemapping\..*$" />
+			</propertyset>
+			<echo message="${toString:sitemappings}" level="debug"/>
+			<for list="${toString:sitemappings}" param="prop">
+				<sequential>
+					<local name="lserverprefix"/>
+					<local name="site-file"/>
+					<local name="site-dir"/>
+					<propertyregex property="lserverprefix"
+								override="true"
+					               input="@{prop}"
+					               regexp="^\s*sitemapping\.([^\.]*)="
+					               select="\1"/>
+					<propertyregex property="site-file"
+								override="true"
+					               input="@{prop}"
+					               regexp="^.*=(.*)"
+					               select="\1"/>
+
+
+					<property file="${root.dir}/projectsite/${site-file}" prefix="${lserverprefix}" />
+					<echo message="site-file: ${root.dir}/projectsite/${site-file} loaded as ${lserverprefix}" level="info"/>
+
+					<dirname property="site-dir" file="${root.dir}/projectsite/${site-file}" />
+					<property file="${site-dir}/site.antcrawler.properties" prefix="${lserverprefix}" />
+					# agent side basedir . To be refactored to ${lserverprefix}.basedir/${lserverprefix} 
+					<property name="${lserverprefix}.basedir" value="${ant.project.name}"/>
+					#<echoproperties taskname="site-properties" prefix="${lserverprefix}"/>
+				</sequential>
+			</for>
+		</sequential>
+	</macrodef>
+
+
+	<match-site-mapping />
+	-->
+	
+	<!--
+	<property name="projectsite-home" value="${root.dir}/projectsite/${projectsite}" />
+	<property file="${projectsite-home}/projectsite.properties"/>
+	<property file="${projectsite-home}/site.antcrawler.properties" />
+	-->
+
+	<target name="setupEachProjectHome" description="Setups libraries and env shell script to server.Server needs to be set to enable in conductor-build.properties.">
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<create-projecthome-directories-wrap serverprefix="${serverprefix}" />
+				<sendlibrarieswrap serverprefix="${serverprefix}" />
+				-->
+				<create-projecthome-directories server.address="${${loopserver.serverprefix}.antserver.address}"
+				                                user.name="${${loopserver.serverprefix}.user.name}"
+				                                user.password="${${loopserver.serverprefix}.user.password}"
+				                                projecthome="${${loopserver.serverprefix}.projecthome}" />
+				<sendlibraries server.address="${${loopserver.serverprefix}.antserver.address}"
+				               user.name="${${loopserver.serverprefix}.user.name}"
+				               user.password="${${loopserver.serverprefix}.user.password}"
+				               projecthome="${${loopserver.serverprefix}.projecthome}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="setupOneProjectHome" description="Setups libraries and env shell script to server.Server needs to be set to enable in conductor-build.properties.">
+		<!--
+		<create-projecthome-directories-wrap serverprefix="${serverprefix}" />
+		<sendlibrarieswrap serverprefix="${serverprefix}" />
+		-->
+		<create-projecthome-directories server.address="${${serverprefix}.antserver.address}"
+			                                user.name="${${serverprefix}.user.name}"
+			                                user.password="${${serverprefix}.user.password}"
+			                                projecthome="${${serverprefix}.projecthome}" />
+		<sendlibraries server.address="${${serverprefix}.antserver.address}"
+			               user.name="${${serverprefix}.user.name}"
+			               user.password="${${serverprefix}.user.password}"
+			               projecthome="${${serverprefix}.projecthome}" />
+	</target>
+
+	<!--
+	<macrodef name="create-projecthome-directories-wrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<create-projecthome-directories server.address="${@{serverprefix}.antserver.address}"
+					                   user.name="${@{serverprefix}.user.name}"
+					                   user.password="${@{serverprefix}.user.password}"
+					                   projecthome="${@{serverprefix}.projecthome}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+
+	<macrodef name="create-projecthome-directories" description="Create directory needed">
+		<attribute name="server.address"/>
+		<attribute name="user.name"/>
+		<attribute name="user.password"/>
+		<attribute name="projecthome"/>
+		<sequential>
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="mkdir -p @{projecthome}; mkdir -p @{projecthome}/${pants.agent.lib.dir}; 
+						mkdir -p @{projecthome}/${pants.agent.temp.dir};
+						mkdir -p @{projecthome}/${pants.agent.ant.dir}"
+			         trust="yes" />
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="sendlibrarieswrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<sendlibraries server.address="${@{serverprefix}.antserver.address}"
+					               user.name="${@{serverprefix}.user.name}"
+					               user.password="${@{serverprefix}.user.password}"
+						projecthome="${@{serverprefix}.projecthome}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+
+	<macrodef name="sendlibraries" taskname="sendlibraries" description="Sends and unzips ant and jdk binaries in {root}/binaries/tools. Then put libraries under {root}/binaries/ext into ant's lib directory.">
+		<attribute name="user.name" />
+		<attribute name="user.password" />
+		<attribute name="server.address" />
+		<attribute name="projecthome" />
+		<sequential>
+			<local name="server.address"/>
+			<property name="server.address" value="@{server.address}" />
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="mkdir -p @{projecthome}/temp"
+			         trust="yes" />
+			<!--
+			<scp file="${root.dir}/binaries/tools/${antbinfile}"
+			     todir="@{user.name}@${server.address}:@{projecthome}/temp"
+			     password="@{user.password}"
+			     trust="yes" />
+			-->
+			<scp todir="@{user.name}@${server.address}:@{projecthome}/${pants.agent.lib.dir}"
+			     password="@{user.password}"
+			     trust="yes" >
+				<fileset dir="${pants.server.agent.lib.dir.path}" />
+			</scp>
+			<scp todir="@{user.name}@${server.address}:@{projecthome}/${pants.agent.temp.dir}"
+			     password="@{user.password}"
+			     trust="yes" >
+				<fileset file="${pants.server.agent.ant.dir.path}/pants.agent-*.zip" />
+			</scp>
+			<!--
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="unzip -n -q -d @{projecthome} @{projecthome}/temp/${antbinfile}; rm @{projecthome}/temp/${antbinfile}"
+			         trust="yes" />
+			-->
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="unzip -n -q -d @{projecthome}/${pants.agent.ant.dir} @{projecthome}/${pants.agent.temp.dir}/pants.agent-*.zip"
+			         trust="yes" />
+			<!--
+			<scp todir="@{user.name}@${server.address}:@{projecthome}/lib"
+			     password="@{user.password}"
+			     trust="yes">
+				<fileset dir="${root.dir}/binaries/ext" />
+			</scp>
+
+			<scp file="${root.dir}/binaries/tools/${jdkbinfile}"
+			     todir="@{user.name}@${server.address}:@{projecthome}/temp"
+			     password="@{user.password}"
+			     trust="yes" />
+			-->
+			<!--
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="tar xzf @{projecthome}/jvm/${jdkbinfile} -C @{projecthome}"
+			         trust="yes" />
+			         -->
+		</sequential>
+	</macrodef>
+
+	<target name="setupprojecthome" description="Setups libraries and env shell script to server.Server needs to be set to enable in conductor-build.properties.">
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<create-projecthome-directories-wrap serverprefix="${serverprefix}" />
+				<sendlibrarieswrap serverprefix="${serverprefix}" />
+				-->
+				<create-projecthome-directories server.address="${${loopserver.serverprefix}.antserver.address}"
+				                                user.name="${${loopserver.serverprefix}.user.name}"
+				                                user.password="${${loopserver.serverprefix}.user.password}"
+				                                projecthome="${${loopserver.serverprefix}.projecthome}" />
+				<sendlibraries server.address="${${loopserver.serverprefix}.antserver.address}"
+				               user.name="${${loopserver.serverprefix}.user.name}"
+				               user.password="${${loopserver.serverprefix}.user.password}"
+				               projecthome="${${loopserver.serverprefix}.projecthome}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="startantserver" depends="sendenvscript-target" description="Starts antserver. Server needs to be set to enable in conductor-build.properties.">
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<startantserverwrap serverprefix="${serverprefix}"/>
+				-->
+				<startantserver serverprefix="${loopserver.serverprefix}"
+								server.address="${${loopserver.serverprefix}.antserver.address}"
+				                user.name="${${loopserver.serverprefix}.user.name}"
+				                user.password="${${loopserver.serverprefix}.user.password}"
+				                projecthome="${${loopserver.serverprefix}.projecthome}"
+				                listenport="${${loopserver.serverprefix}.antserver.port}"
+				                logfile="${loopserver.serverprefix}.${${loopserver.serverprefix}.antserver.port}.antserver.log"
+				                option="${${loopserver.serverprefix}.antserver.option}" />
+			</taskforeachserver>
+		</loopservers>
+		<antcall target="sync" />
+	</target>
+
+	<target name="stopantserver" description="Stops antserver. Server needs to be set to enable in conductor-build.properties.">
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<stopantserverwrap serverprefix="${serverprefix}" />
+				-->
+				<stopantserver server.address="${${loopserver.serverprefix}.antserver.address}"
+					antserver.port="${${loopserver.serverprefix}.antserver.port}"
+				               user.name="${${loopserver.serverprefix}.user.name}"
+				               user.password="${${loopserver.serverprefix}.user.password}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+
+	<target name="stopantserverAll" description="Stops antserver. Server needs to be set to enable in conductor-build.properties.">
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<stopantserverAllwrap serverprefix="${loopserver.serverprefix}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+
+
+	<macrodef name="loopservers" description="If server is set to enable=true in property file, the taskforeachserver element is executed. Use Property 'serverprefix' in task. ">
+		<element name="taskforeachserver" />
+		<attribute name="parallel" default="false"/>
+		<attribute name="onetimeonly" default="false"/>
+		<sequential>
+			<propertyset id="enableproperties">
+				<propertyref regex="^[^\.]*\.enable$" />
+			</propertyset>
+			<local name="parallel"/>
+			<if>
+				<equals arg1="@{onetimeonly}" arg2="true"/>
+				<then>
+					<property name="parallel" value="false"/>
+				</then>
+				<else>
+					<property name="parallel" value="@{parallel}" />
+				</else>
+			</if>
+			<local name="doneonce"/>
+			<echo message="${toString:enableproperties}" level="debug"/>
+			<for list="${toString:enableproperties}" param="prop" parallel="${parallel}">
+				<sequential>
+					<local name="loopserver.serverprefix"/>
+					<local name="loopserver.enabled"/>
+					<propertyregex property="loopserver.serverprefix"
+								override="true"
+					               input="@{prop}"
+					               regexp="^\s*([^\.]*)\.enable="
+					               select="\1"/>
+					<propertyregex property="loopserver.enabled"
+								override="true"
+					               input="@{prop}"
+					               regexp="^[^\.]*\.enable=([^\.]*)"
+					               select="\1"/>
+					<echo message="loopserver.serverprefix: ${loopserver.serverprefix}" level="debug"/>
+					<echo message="loopserver.enabled: ${loopserver.enabled}" level="debug"/>
+					<if>
+						<equals arg1="${loopserver.enabled}" arg2="true" />
+						<then>
+							<if>
+								<not>
+									<isset property="doneonce"/>
+								</not>
+								<then>
+									<echo message="${loopserver.serverprefix} is enabled" />
+									<taskforeachserver />
+									<if>
+										<equals arg1="@{onetimeonly}" arg2="true" />
+										<then>
+											<property name="doneonce" value="true" />
+											<echo message="Execute only once. Skipping rest of servers." />
+										</then>
+									</if>
+								</then>
+								<else>
+									<echo message="${loopserver.serverprefix} is skipped" />
+								</else>
+							</if>
+						</then>
+						<else>
+							<echo message="${loopserver.serverprefix} is disabled" />
+						</else>
+					</if>
+				</sequential>
+			</for>
+		</sequential>
+	</macrodef>
+
+	<target name="sendenvscript-target">
+		<mkdir dir="${projectsite-home}/dist" />
+		<loopservers parallel="false">
+			<taskforeachserver>
+				<!--
+				<generate-env-file-wrap serverprefix="${serverprefix}" />
+				-->
+				<!--
+				<generate-env-file serverprefix="${loopserver.serverprefix}" template="${${loopserver.serverprefix}.envtemplate}"
+					out-envfile="${projectsite-home}/dist/${loopserver.serverprefix}.antserverenv.sh" />
+				-->
+				<javaresource id="antserverenv.sh.template-id" name="antserverenv.sh.template" />
+				<gen-env:generate-env-file serverprefix="${loopserver.serverprefix}" template-refid="antserverenv.sh.template-id"
+					out-envfile="${projectsite-home}/dist/${loopserver.serverprefix}.antserverenv.sh" />
+			</taskforeachserver>
+		</loopservers>
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<sendenvscriptwrap serverprefix="${serverprefix}" />
+				-->
+				<sendenvscript serverprefix="${loopserver.serverprefix}" 
+							   server.address="${${loopserver.serverprefix}.antserver.address}"
+				               user.name="${${loopserver.serverprefix}.user.name}"
+				               user.password="${${loopserver.serverprefix}.user.password}"
+				               projecthome="${${loopserver.serverprefix}.projecthome}"
+				               envfile="${projectsite-home}/dist/${loopserver.serverprefix}.antserverenv.sh"/>
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<!--
+	<macrodef name="generate-env-file-wrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<generate-env-file serverprefix="@{serverprefix}" template="${@{serverprefix}.envtemplate}"
+						out-envfile="${projectsite-home}/dist/@{serverprefix}.antserverenv.sh" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	<!-- deprecated 
+	<macrodef name="generate-env-file">
+		<attribute name="serverprefix" />
+		<attribute name="template" />
+		<attribute name="out-envfile" />
+		<sequential>
+			<echo message="Generating env file to @{out-envfile} using template @{template}" level="info" />
+			<mkdir dir="${projectsite-home}/tmp"/>
+			<echoproperties destfile="${projectsite-home}/tmp/@{serverprefix}.properties">
+				<propertyset>
+					<propertyref prefix="@{serverprefix}." />
+					<mapper type="glob" from="@{serverprefix}.*" to="*" />
+				</propertyset>
+			</echoproperties>
+			<copy file="@{template}" tofile="@{out-envfile}" overwrite="true">
+				<filterset>
+					<filtersfile file="${projectsite-home}/tmp/@{serverprefix}.properties" />
+				</filterset>
+			</copy>
+		</sequential>
+	</macrodef>
+	-->
+	
+	<!--
+	<macrodef name="sendenvscriptwrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<sendenvscript serverprefix="@{serverprefix}" 
+								   server.address="${@{serverprefix}.antserver.address}"
+					               user.name="${@{serverprefix}.user.name}"
+					               user.password="${@{serverprefix}.user.password}"
+					               projecthome="${@{serverprefix}.projecthome}"
+					               envfile="${projectsite-home}/dist/@{serverprefix}.antserverenv.sh"/>
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+
+	<macrodef name="sendenvscript" description="Creates and send env script to basedir.">
+		<attribute name="serverprefix" />
+		<attribute name="user.name" />
+		<attribute name="user.password" />
+		<attribute name="server.address" />
+		<attribute name="projecthome" />
+		<attribute name="envfile" />
+		<sequential>
+			<!--
+			<copy todir="${root.dir}/antserver" flatten="true">
+				<javaresource name="antserverstart_build.xml"/>
+			</copy>
+			-->
+	<!--
+			<unzip dest="${root.dir}/antserver">
+				<fileset dir="${root.dir}/agent/ant">
+				</fileset>
+			</unzip>
+			-->
+			<local name="server.address"/>
+			<property name="server.address" value="@{server.address}" />
+			<!--
+			<generate-properties todir="dist" serverprefix="@{serverprefix}"/>
+			<property file="@{serverprefix}.properties"/>
+			-->
+			<scp file="@{envfile}"
+				remoteTofile="@{user.name}@${server.address}:@{projecthome}/@{serverprefix}.antserverenv.sh"
+			     password="@{user.password}"
+			     trust="yes" />
+	<!--
+			<scp file="${root.dir}/antserver/antserverstart_build.xml"
+			     todir="@{user.name}@${server.address}:@{projecthome}"
+			     password="@{user.password}"
+			     trust="yes" />
+			     -->
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="startantserverwrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<startantserver serverprefix="@{serverprefix}"
+									server.address="${@{serverprefix}.antserver.address}"
+					                user.name="${@{serverprefix}.user.name}"
+					                user.password="${@{serverprefix}.user.password}"
+					                projecthome="${@{serverprefix}.projecthome}"
+					                listenport="${@{serverprefix}.antserver.port}"
+					                logfile="@{serverprefix}.${@{serverprefix}.antserver.port}.antserver.log"
+					                option="${@{serverprefix}.antserver.option}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+-->
+	<macrodef name="startantserver">
+		<attribute name="serverprefix" />
+		<attribute name="user.name" />
+		<attribute name="user.password" />
+		<attribute name="server.address" />
+		<attribute name="projecthome" />
+		<attribute name="listenport" />
+		<attribute name="logfile" default="antserver.log" />
+		<attribute name="option" default="" />
+		<sequential>
+			<!-- limit is used as a workaround for sshexec not returning  -->
+			<limit maxwait="3">
+				<sshexec host="@{server.address}"
+				         username="@{user.name}"
+				         password="@{user.password}"
+				         command="cd @{projecthome}; . ./@{serverprefix}.antserverenv.sh; nohup ant -file @{projecthome}/antserverstart_build.xml -logfile @{logfile} -Dserverprefix=@{serverprefix} -Dpropertyfile=${serversidepropertyfilename} -Dlistenport=@{listenport} @{option} &amp;"
+				         trust="yes" />
+			</limit>
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="stopantserverwrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<stopantserver server.address="${@{serverprefix}.antserver.address}"
+						antserver.port="${@{serverprefix}.antserver.port}"
+					               user.name="${@{serverprefix}.user.name}"
+					               user.password="${@{serverprefix}.user.password}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+-->
+
+	<macrodef name="stopantserver" description="kills antserver process for specified port">
+		<attribute name="user.name" />
+		<attribute name="user.password" />
+		<attribute name="server.address" />
+		<attribute name="antserver.port" />
+		<sequential>
+			<sshexec host="@{server.address}"
+				     failonerror="false"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="PID=`ps -ef | grep ant | grep antserverstart_build.xml | grep Dlistenport=@{antserver.port} | grep -v grep | awk '{print $2}'`; if [ $PID == '' ]; then echo 'Process @{procstring} @{procstring2} @{procstring3} not found. exiting.'; exit 0; fi; kill -9 $PID"
+			         trust="yes" />
+		</sequential>
+	</macrodef>
+
+
+
+
+</project>

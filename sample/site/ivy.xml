@@ -1,0 +1,9 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.site.sample"/>
+    <publications>
+    	<artifact name="pants.site.sample" type="site" ext="zip"/>
+    </publications>
+    <dependencies>
+        <dependency org="net.skiy" name="pants.install" rev="latest.integration" conf="default->default"/>
+    </dependencies>
+</ivy-module>

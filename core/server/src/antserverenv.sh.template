@@ -1,0 +1,18 @@
+#!/bin/sh
+
+@env.preset@
+
+PROJECT_HOME=@projecthome@
+ANT_HOME=@anthome@
+JAVA_HOME=@javahome@
+PATH=$JAVA_HOME/bin:$ANT_HOME/bin:$PATH
+PANTS_LIBDIR=${PROJECT_HOME}/@pants.agent.lib.dir@
+
+@env.addpath@
+
+for jar in `ls $PANTS_LIBDIR/*.jar`; do
+  CLASSPATH="$jar:${CLASSPATH}"
+done
+CLASSPATH=$ANT_HOME/lib/ant.jar:$CLASSPATH
+
+export PATH CLASSPATH

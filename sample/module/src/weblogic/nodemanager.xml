@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="nodemanager" default="" basedir="./">
+	<property name="check-after-start" value="anything" />
+	<property file="${propertyfile}" />
+	<property name="weblogic.module.dir" value="${ant.file}/.." />
+	<import file="macro-build.xml" />
+	<import file="../common.xml" />
+
+	<target name="-start-impl">
+		<startNodeManager nodemanager.home="${wls.nodemanager.home}"
+			nodemanager.address="${wls.nodemanager.address}" nodemanager.port="${wls.nodemanager.port}" />
+	</target>
+
+	<target name="-stop-impl">
+		<stopNodeManager nodemanager.port="${wls.nodemanager.port}" />
+	</target>
+
+	<target name="-check-impl">
+		<checkproc procstring="weblogic.NodeManager" procstring2="DListenPort=${wls.nodemanager.port}" outputproperty="already-started"/>
+	</target>
+	
+	<macrodef name="startNodeManager">
+		<attribute name="nodemanager.home" />
+		<attribute name="nodemanager.address" />
+		<attribute name="nodemanager.port" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					startNodeManager(verbose='true', NodeManagerHome='@{nodemanager.home}', ListenPort='@{nodemanager.port}', ListenAddress='@{nodemanager.address}')
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="stopNodeManager">
+		<attribute name="nodemanager.port" />
+		<sequential>
+			<killproc procstring="weblogic.NodeManager" procstring2="DListenPort=@{nodemanager.port}" />
+		</sequential>
+	</macrodef>
+</project>

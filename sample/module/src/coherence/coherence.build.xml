@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="coherence" default="help" basedir="./">
+	<property file="${propertyfile}"/>
+	<target name="help">
+	</target>
+	<target name="start">
+		<echo>startedeee cacheserver</echo>
+		<startCacheServer coherence.home="${coherence.home}" coherence.member="member1" java.home="${java.home}"/>
+		<startCacheServer coherence.home="${coherence.home}" coherence.member="member2" java.home="${java.home}"/>
+	</target>
+	
+	<target name="stop">
+		<echo>stoppp cacheserver</echo>
+		<stopCacheServer coherence.member="member1"/>
+		<stopCacheServer coherence.member="member2"/>
+	</target>
+	
+	<macrodef name="startCacheServer">
+		<attribute name="coherence.home"/>
+		<attribute name="coherence.member"/>
+		<attribute name="memsize" default="256m"/>
+		<attribute name="java.home"/>
+		<sequential>
+			<exec executable="/bin/sh" dir="./coherence">
+				<arg value="start-cache-server.sh"/>
+				<env key="COHERENCE_HOME" value="@{coherence.home}"/>
+				<env key="MEMBER" value="@{coherence.member}"/>
+				<env key="MEMORY" value="@{memsize}"/>
+				<env key="JAVA_HOME" value="${java.home}"/>
+			</exec>
+		</sequential>
+	</macrodef>
+		
+	<macrodef name="stopCacheServer">
+		<attribute name="coherence.member"/>
+		<sequential>
+			<exec executable="/bin/sh" dir="./coherence">
+				<arg value="stop-cache-server.sh"/>
+				<env key="MEMBER" value="@{coherence.member}"/>
+			</exec>
+		</sequential>
+	</macrodef>
+	
+	<target name="install">
+	</target>
+</project>

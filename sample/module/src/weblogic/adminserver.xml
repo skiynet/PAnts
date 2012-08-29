@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="adminserver" default="" basedir="./" >
+
+	<property file="${propertyfile}"/>
+	<property name="weblogic.module.dir" value="${ant.file}/.."/>
+	<import file="macro-build.xml"/>
+	<import file="../common.xml" />
+
+	<target name="-start-impl">
+		<property name="wls.isJrockit" value="false"/>
+		<property name="wls.admin.noexit" value="true"/>
+		<start-server domainname="${wls.domain.name}" dir="${wls.domain.dir}" host="${wls.admin.host}" port="${wls.admin.port}" extra-server-verbose="${wls.admin.extra-server-verbose}" isJrockit="${wls.isJrockit}" noexit="${wls.admin.noexit}"/>
+	</target>
+
+	<target name="-stop-impl">
+		<stop-server host="${wls.admin.host}" port="${wls.admin.port}" servername="AdminServer"/>
+	</target>
+	
+	<target name="-check-impl">
+		<checkproc procstring="Dweblogic.Name=AdminServer" procstring2="Dweblogic.Domain=${wls.domain.name}" outputproperty="already-started"/>
+	</target>
+
+</project>

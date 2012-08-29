@@ -1,0 +1,15 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.sample.project1"/>
+    <configurations defaultconf="dist">
+    	<conf name="dist" description="inclue ant files only" />
+    	<conf name="dist-all" description="include runtime dependencies too" />
+    </configurations>
+    <publications>
+    	<artifact name="pants.sample.project1" type="ant" ext="zip" />
+    </publications>
+    <dependencies>
+        <dependency org="net.skiy" name="pants.site.sample" rev="latest.integration" conf="dist-all->default"/>
+        <dependency org="net.skiy" name="pants.module.sample" rev="latest.integration" conf="dist-all->include-dep"/>
+        <dependency org="net.skiy" name="pants.install" rev="latest.integration" conf="dist-all->default"/>
+    </dependencies>
+</ivy-module>

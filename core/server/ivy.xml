@@ -1,0 +1,32 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.server"/>
+    <publications>
+    	<artifact name="pants.server" type="ant" ext="jar"/>
+    </publications>
+    <dependencies>
+    	<dependency org="com.jcraft" name="jsch" rev="0.1.48" >
+    		<artifact name="jsch" type="jar"/>
+    	</dependency>
+    	<dependency org="xml-apis" name="xml-apis" rev="1.4.01">
+    		<artifact name="xml-apis" type="jar"/>
+    	</dependency>
+    	<dependency org="xerces" name="xercesImpl" rev="2.6.2">
+    		<artifact name="xercesImpl" type="jar"/>
+    	</dependency>
+    	<!-- 
+    	<dependency org="org.apache.ant" name="ant" rev="1.8.2" />
+    	 -->
+    	<!-- runtimeしていしないとたくさんとってきてしまう -->
+    	<dependency org="org.codehaus.groovy" name="groovy-all" rev="1.8.6" conf="*->runtime" >
+    		<artifact name="groovy-all" type="jar" />
+    	</dependency>
+    	<dependency org="org.apache.ant" name="ant-props" rev="1.8"/>
+    	<dependency org="ant-contrib" name="ant-contrib" rev="1.0b3" transitive="false" >
+    		<artifact name="ant-contrib" type="jar" />
+    	</dependency>
+    	<!-- 
+    	<dependency org="net.skiy" name="ServerTaskPatch" rev="latest.integration" conf="default->runtime"/>
+    	 -->
+    	<dependency org="net.skiy" name="pants.tasks" rev="latest.integration" conf="*->runtime" />
+    </dependencies>
+</ivy-module>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="echo_message1" default="" basedir="./" >
+	<property name="propertyfile" value="build.properties"/>
+	<property file="${propertyfile}"/>
+	
+	<import file="../common.xml" />
+	
+	<target name="-start-impl">
+		<echo message="started!! echo_message1"/>
+		<property name="started" value="true"/>
+	</target>
+
+
+</project>

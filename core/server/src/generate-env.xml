@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<antlib>
+	<macrodef name="generate-env-file">
+		<attribute name="serverprefix" />
+		<attribute name="out-envfile" />
+		<attribute name="template-refid" />
+		<sequential>
+			<echo message="Generating env file to @{out-envfile} using template @{template}" level="info" />
+			<mkdir dir="${projectsite-home}/tmp"/>
+			<echoproperties destfile="${projectsite-home}/tmp/@{serverprefix}.properties">
+				<!-- all will be overrided by server -->
+				<propertyset>
+					<propertyref prefix="@{serverprefix}." />
+					<mapper type="glob" from="@{serverprefix}.*" to="*" />
+				</propertyset>
+			</echoproperties>
+			<copy tofile="@{out-envfile}" overwrite="true">
+				<resource refid="@{template-refid}" />
+				<filterset>
+					<filtersfile file="${projectsite-home}/tmp/@{serverprefix}.properties" />
+				</filterset>
+			</copy>
+		</sequential>
+	</macrodef>
+</antlib>

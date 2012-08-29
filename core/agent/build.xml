@@ -1,0 +1,5 @@
+<project name="pants.agent" default="publish-local">
+	<property file="build.properties"/>
+	
+	<import file="${pants.build.dir}/common.xml"/>
+</project>

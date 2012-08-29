@@ -1,0 +1,56 @@
+<project name="test-statetask" default=""
+	xmlns:au="antlib:org.apache.ant.antunit">
+	<!-- 
+	<taskdef name="state-list" classname="org.antcrawler.StateListTask"
+		classpath="build/AntCrawlerTasks-0.0.1-snap.jar" />
+	<taskdef name="state-sync" classname="org.antcrawler.StateSyncTask"
+		classpath="build/AntCrawlerTasks-0.0.1-snap.jar" />
+	 -->
+
+	<path id="testjar">
+		<fileset dir="../build">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+
+	<taskdef classpathref="testjar" resource="tasks.properties" />
+<!-- これだとそれぞれクラスローダーが異なるためか、state-syncが参照するstate-listがキャストするときにClassCastExceptionとなる。
+	<taskdef classpathref="testjar" name="state-list" classname="org.antcrawler.StateListTask" />
+	<taskdef classpathref="testjar" name="state-sync" classname="org.antcrawler.StateSyncTask" />
+ -->	
+
+    
+	<property name="weblogic.wls2.fail" value="fail" />
+
+	<state-list id="all-success">
+		<state server="wls1" module="weblogic" state="admin-server" />
+		<state server="wls2" module="weblogic" state="managed-server" />
+		<state server="rac1" module="oracle" state="database" />
+	</state-list>
+
+	<state-list id="fail-at-second">
+		<state server="wls1" module="weblogic" state="admin-server" />
+		<state server="wls2" module="weblogic" state="fail" />
+		<state server="rac1" module="oracle" state="database" />
+	</state-list>
+	
+
+	<target name="test-enable-all-success">
+		<state-sync statelistref="all-success" state="enable" />
+	</target>
+
+	<target name="test-disable-all-success">
+		<state-sync statelistref="all-success" state="disable" />
+	</target>
+
+	<target name="test-enable-fail-at-second">
+		<state-sync statelistref="fail-at-second" state="enable" />
+	</target>
+
+	<target name="test-disable-fail-at-second">
+		<state-sync statelist="fail-at-second" state="disable" />
+	</target>
+	
+	
+
+</project>

@@ -1,0 +1,352 @@
+<project name="cases-master-target" xmlns:props="antlib:org.apache.ant.props" xmlns:pants="antlib:net.skiy.pants.tasks">
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+	<property environment="env"/>
+	<property name="root.dir" value="${env.ANTCRAWLER_HOME}" />
+	
+	<typedef uri="antlib:org.apache.ant.props" resource="org/apache/ant/props/antlib.xml" classpath="ant-props.jar"/>
+	
+	<propertyhelper>
+		<props:nested />
+	</propertyhelper>
+	
+	<pants:load-install-properties />
+	<pants:load-project-properties />
+	
+	<import file="cases-master-macro.build.xml" />
+	<!--
+	<property file="${basedir}/conductor-build.properties" />
+	-->
+	<!--
+	<fail unless="projectsite" message="property 'projectsite' must be set" taskname="property check" />
+	-->
+	<import file="projectsite-build.xml"/>
+
+	<!--
+	<groovy description="recursive import of conductor-build.xml and conductor-build.properties" taskname="recurse-project-read">
+		<![CDATA[
+			def nowdir = new File(properties['basedir'])
+			println "basedir: " + nowdir
+			
+			while ( nowdir.getName() != "cases" ) {
+				def nowdirbuildproperties = new File(nowdir.canonicalPath + "/conductor-build.properties")
+				def nowdirbuildxml = new File(nowdir.canonicalPath + "/conductor-build.xml")
+				
+				if ( nowdirbuildproperties.exists() ) {
+					ant.property(file:"${nowdirbuildproperties.canonicalPath}")
+					//println "imported ${nowdirbuildproperties.canonicalPath}"
+				} else {
+					//println "nowdirbuildproperties does not exist: " + nowdirbuildproperties.canonicalPath
+				}
+				
+				if ( nowdirbuildxml.exists() ) {
+					ant.import(file:"${nowdirbuildxml.canonicalPath}")
+					//println "imported ${nowdirbuildxml.canonicalPath}"
+				} else {
+					//println "nowdirbuildxml does not exist: " + nowdirbuildxml.canonicalPath
+				}
+			
+				nowdir = new File(nowdir.parent) 
+				//println "nowdir.getName(): "+ nowdir.getName()
+			}
+					
+
+			]]>
+	</groovy>
+	-->
+	<loopservers parallel="false" >
+		<taskforeachserver>
+			<property name="${loopserver.serverprefix}.modules.dir" value="${${loopserver.serverprefix}.projecthome}/modules/ant" />
+		</taskforeachserver>
+	</loopservers>
+	
+	<loopservers parallel="false" >
+		<taskforeachserver>
+			<property name="${loopserver.serverprefix}.modules.lib.dir" value="${${loopserver.serverprefix}.projecthome}/modules/lib" />
+		</taskforeachserver>
+	</loopservers>
+
+	<condition property="is.windows">
+		<os family="windows" />
+	</condition>
+
+	<condition property="is.unix">
+		<os family="unix" />
+	</condition>
+
+
+	<target name="echoprops">
+		<if>
+			<isset  property="prefix" />
+			<then>
+				<echoproperties prefix="${prefix}"  />
+			</then>
+			<else>
+				<echoproperties />
+			</else>
+		</if>
+	</target>
+
+	<target name="echoprops_tofile">
+		<if>
+			<and>
+				<isset  property="prefix" />
+				<isset property="destfile" />
+			</and>
+			<then>
+				<echoproperties destfile="${destfile}" prefix="${prefix}"/>
+			</then>
+			<elseif>
+				<isset property="destfile" />
+				<then>
+					<echoproperties destfile="${destfile}"/>
+				</then>
+			</elseif>
+			<else>
+				<mkdir dir="tmp"/>
+				<echoproperties destfile="tmp/build.properties"/>
+			</else>
+		</if>
+	</target>
+
+	<target name="mkdir-dist" description="make dist directory">
+		<mkdir dir="${basedir}/dist"/>
+	</target>
+
+	<target name="generatedistresources" depends="mkdir-dist" description="creates files to distribute in cases project">
+		<generate-distresources basedir="${basedir}" />
+	</target>
+
+	<target name="-create_modulesfile">
+		<zip destfile="${root.dir}/modules.zip" basedir="${root.dir}/modules" />
+	</target>
+
+	<target name="-generate-properties" depends="mkdir-dist">
+		<loopservers parallel="false">
+			<taskforeachserver>
+				<generate-properties serverprefix="${loopserver.serverprefix}" todir="${basedir}/dist"/>
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="sync" description="sync module files and properties." depends="sync_module_files, setupcase"/>
+
+	<target name="sync_module_files" depends="-create_modulesfile" description="Use this when you configured modules build file. This sends module build files to server. Server needs to be set to enable in conductor-build.properties.">
+		<loopservers parallel="true" onetimeonly="${projecthomeshared}" >
+			<taskforeachserver>
+				<!--
+				<sync_module_file_wrap serverprefix="${serverprefix}" />
+				-->
+				<sync_module_file serverprefix="${loopserver.serverprefix}"
+				                  server.address="${${loopserver.serverprefix}.antserver.address}"
+				                  server.port="${${loopserver.serverprefix}.antserver.port}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="create-case-directory" >
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<createdirectorieswrap serverprefix="${serverprefix}" />
+				-->
+				<createdirectories server.address="${${loopserver.serverprefix}.antserver.address}"
+				                   user.name="${${loopserver.serverprefix}.user.name}"
+				                   user.password="${${loopserver.serverprefix}.user.password}"
+				                   basedir="${${loopserver.serverprefix}.projecthome}/${${loopserver.serverprefix}.basedir}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="setupcase" depends="create-case-directory,  generatedistresources, -generate-properties, send-properties-target" />
+
+	<target name="send-properties-target" >
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<send-properties-wrap serverprefix="${serverprefix}" />
+				-->
+				<send-properties serverprefix="${loopserver.serverprefix}"
+	                  server.address="${${loopserver.serverprefix}.antserver.address}"
+	                  server.port="${${loopserver.serverprefix}.antserver.port}"
+					casebasedir="${${loopserver.serverprefix}.basedir}"/>
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="retrievelogs" description="Retrieves all logs from servers and packs to a file in ${logretrivedir} directory.">
+		<local name="now"/>
+		<tstamp>
+			<format property="now"
+			        pattern="yyyy-MM-dd-HH-mm-ss"/>
+		</tstamp>
+		<!-- set ant.project.name as logcomment if property "retrievelog.comment" is empty  -->
+		<property name="logcomment" value="${ant.project.name}"/>
+
+		<mkdir dir="${logretrivedir}/${now}_${logcomment}"/>
+		<loopservers parallel="true">
+			<taskforeachserver>
+				<!--
+				<retrievelogswrap serverprefix="${serverprefix}" todir="${logretrivedir}/${now}_${logcomment}" logcomment="${logcomment}"/>
+				-->
+				<retrievelogs server.address="${${loopserver.serverprefix}.antserver.address}"
+				              todir="${logretrivedir}/${now}_${logcomment}"
+				              user.name="${${loopserver.serverprefix}.user.name}"
+				              user.password="${${loopserver.serverprefix}.user.password}"
+				              basedir="${${loopserver.serverprefix}.projecthome}/${${loopserver.serverprefix}.basedir}"
+				              serverprefix="${loopserver.serverprefix}" 
+				              comment="${logcomment}"/>
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="setStartTimeProperty" description="setStartTimeProperty">
+		<loopservers parallel="true" >
+			<taskforeachserver>
+				<!--
+				<setStartTimePropertyWrap serverprefix="${serverprefix}" />
+				-->
+				<setStartTimeProperty serverprefix="${loopserver.serverprefix}"
+				                  server.address="${${loopserver.serverprefix}.antserver.address}"
+				                  server.port="${${loopserver.serverprefix}.antserver.port}" />
+
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="setEndTimeProperty" description="setEndTimeProperty">
+		<loopservers parallel="true" >
+			<taskforeachserver>
+				<!--
+				<setEndTimePropertyWrap serverprefix="${serverprefix}" />
+				-->
+				<setEndTimeProperty serverprefix="${loopserver.serverprefix}"
+				                  server.address="${${loopserver.serverprefix}.antserver.address}"
+				                  server.port="${${loopserver.serverprefix}.antserver.port}" />
+			</taskforeachserver>
+		</loopservers>
+	</target>
+
+	<target name="diffprop" description="look at differences in cases"  >
+		<property name="pf1" value=""/>
+		<property name="pf2" value="${pf1}"/>
+		<diffprop project1="${pj1}" project2="${pj2}" prefix1="${pf1}" prefix2="${pf2}" />
+	</target>
+
+	<target name="diffrs" description="look at differences in resource"  >
+		<property name="genrs" value="false" />
+		<diffrs project1="${pj1}" project2="${pj2}" genrs="${genrs}"/>
+	</target>
+
+	<target name="listcases" description="list case names" >
+		<property name="root" value="${root.dir}"/>
+		<property name="include" value=""/>
+		<listcases root="${root}" include="${include}"/>
+	</target>
+
+	<target name="execserver" description="ssh into specified server's basedir" >
+		<fail unless="serverprefix" message="must specify serverprefix property"/>
+		<fail unless="cmd" message="must specify cmd property"/>
+		<!--
+		<execserver-wrap serverprefix="${serverprefix}" cmd="${cmd}" />
+		-->
+		<execserver server.address="${${serverprefix}.antserver.address}"
+		                   user.name="${${serverprefix}.user.name}"
+		                   user.password="${${serverprefix}.user.password}"
+		                   basedir="${${serverprefix}.projecthome}/${${serverprefix}.basedir}/${serverprefix}"
+		                   cmd="${cmd}" />
+	</target>
+
+	<target name="execantlocal" description="execute ant local with debug" >
+		<fail unless="serverprefix" message="must specify serverprefix property"/>
+		<fail unless="module" message="must specify module property"/>
+		<fail unless="target" message="must specify target property"/>
+
+		<!--
+		<execantlocal-wrap serverprefix="${serverprefix}" module="${module}" target="${target}" />
+		-->
+		<execserver server.address="${${serverprefix}.antserver.address}"
+		            user.name="${${serverprefix}.user.name}"
+		            user.password="${${serverprefix}.user.password}"
+		            basedir="${${serverprefix}.projecthome}/${${serverprefix}.basedir}/${serverprefix}"
+		            cmd=". ${${serverprefix}.projecthome}/${serverprefix}.antserverenv.sh; ant -f ../../modules/${module}/base-build.xml ${target} -debug -Dbasedir=${${serverprefix}.projecthome}/${${serverprefix}.basedir}/${serverprefix} -Dpropertyfile=build.properties" />
+	</target>
+
+	<target name="rsync" description="deploy usng rsync" >
+		<exec executable="rsync" dir="." failonerror="true">
+			<arg value="-r"/>
+			<arg value="."/>
+			<arg value="${username}@${host}:${dir}"/>
+			<arg value="--exclude-from=rsync.excludes"/>
+			<arg value="-v"/>
+		</exec>
+	</target>
+	
+	<target name="report" depends="gather-report, show-report"/>
+	
+	<target name="gather-report" description="gather-report" >
+		<!--
+		<taskdef classpath="ServerTaskPatch-1.04-snap.jar" name="remoteant" classname="net.sf.antcontrib.antserver.client.ClientTask"/>
+		-->
+		<loopservers parallel="true" >
+			<taskforeachserver>
+				<pants:remoteant machine="${${loopserver.serverprefix}.antserver.address}" port="${${loopserver.serverprefix}.antserver.port}" returnPropertyPrefix="${loopserver.serverprefix}">
+					<runant antfile="${${loopserver.serverprefix}.modules.dir}/common.xml"
+					        target="get-state" inheritall="true" dir="${${loopserver.serverprefix}.basedir}" />
+				</pants:remoteant>
+				<mkdir dir="state"/>
+				<echoproperties destfile="state/${loopserver.serverprefix}.state.properties" >
+					<propertyset>
+						<propertyref prefix="${loopserver.serverprefix}.current-state"/>
+						<propertyref prefix="${loopserver.serverprefix}.current-state-date"/>
+					</propertyset>
+				</echoproperties>
+			</taskforeachserver>
+		</loopservers>
+
+	</target>
+	
+	<target name="show-report">
+		<concat append="true" taskname="state-summary">
+		  <fileset dir="state" includes="*state.properties"/>
+		</concat>
+	</target>
+	
+	<target name="clear-report">
+		<delete>
+			<fileset dir="state" includes="*state.properties"/>
+		</delete>
+	</target>
+	<!--
+	<macrodef name="gather-report-impl">
+		<attribute name="serverprefix" />
+		<attribute name="server.address" />
+		<attribute name="server.port" />
+		<sequential>
+			<remoteant machine="@{server.address}" port="@{server.port}">
+				<runant antfile="${${serverprefix}.modules.dir}/common.xml"
+				        target="gather-report" inheritall="true" dir="${@{serverprefix}.basedir}"  />
+			</remoteant>
+		</sequential>
+	</macrodef>
+	-->
+	<target name="remote-execute">
+		<remoteantwrap serverprefix="${serverprefix}">
+			<nested-element>
+				<runant antfile="${${serverprefix}.modules.dir}/${module}/${build}.xml" target="${remotetarget}" inheritall="true" dir="${${serverprefix}.basedir}/${serverprefix}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="clear-state" depends="clear-report" >
+		<loopservers parallel="true" >
+			<taskforeachserver>
+				<remoteantwrap serverprefix="${loopserver.serverprefix}">
+					<nested-element>
+						<runant antfile="${${loopserver.serverprefix}.modules.dir}/common.xml" target="clear-state" inheritall="true" dir="${${loopserver.serverprefix}.basedir}"/>
+					</nested-element>
+				</remoteantwrap>
+			</taskforeachserver>
+		</loopservers>
+		<antcall target="report"/>
+	</target>
+</project>

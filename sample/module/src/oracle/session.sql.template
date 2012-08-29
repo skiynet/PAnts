@@ -1,0 +1,1 @@
+select (select to_char(sysdate, 'MM-DD HH24:MI:SS') time from dual) time, sid from v$session;

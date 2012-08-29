@@ -1,0 +1,669 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="txtest" default="" basedir="./">
+	<!--
+	<property environment="env"/>
+	<property name="root.dir" value="${env.ANTCRAWLER_HOME}" />
+	<property name="lib.dir" value="${root.dir}/lib" />
+
+	<import>
+	  <javaresource name="cases-master.build.xml">
+	    <classpath location="${lib.dir}/minicrawler-cases-master.zip"/>
+	  </javaresource>
+	</import>
+-->
+	<import>
+	  <javaresource name="cases-master.build.xml" />
+	</import>
+	<target name="help">
+		<echoproperties/>
+	</target>
+
+	<target name="startTest"
+	        description="1. sync 2.prepare logging 3.run test 4.disable logging 5.retrive logs">
+		<antcall target="sync" />
+		<antcall target="enableManagedServer" />
+		<antcall target="enableMBeanLogging" />
+		<antcall target="enableAwrSnapshot" />
+		<antcall target="enablePerfviewLogging" />
+		<antcall target="enableNmonLogging" />
+		<antcall target="setStartTimeProperty" />
+		<antcall target="startJmeterTest" />
+		<antcall target="setEndTimeProperty" />
+		<antcall target="disableMBeanLogging" />
+		<antcall target="disableAwrSnapshot" />
+		<antcall target="disablePerfviewLogging" />
+		<antcall target="disableNmonLogging" />
+		<antcall target="generateMBeanReport" />
+		<antcall target="generateJmeterReport" />
+		<antcall target="generateAwrReport" />
+		<antcall target="generateServiceMetricReport" />
+		<echo message="wait 10 seconds for awr report to generate file" />
+		<sleep seconds="10" />
+		<antcall target="disableManagedServer" />
+		<antcall target="retrievelogs" />
+	</target>
+	
+	<target name="startTest2"
+	        description="get wls dao responsetime">
+		<antcall target="sync" />
+		<antcall target="enableManagedServer" />
+		<antcall target="enableMBeanLogging" />
+		<antcall target="enableAwrSnapshot" />
+		<antcall target="enablePerfviewLogging" />
+		<antcall target="enableNmonLogging" />
+		<antcall target="setStartTimeProperty" />
+		<antcall target="startJmeterTest" />
+		<antcall target="setEndTimeProperty" />
+		<antcall target="disableMBeanLogging" />
+		<antcall target="disableAwrSnapshot" />
+		<antcall target="disablePerfviewLogging" />
+		<antcall target="disableNmonLogging" />
+		<antcall target="generateMBeanReport" />
+		<antcall target="generateJmeterReport" />
+		<antcall target="generateAwrReport" />
+		<antcall target="generateServiceMetricReport" />
+		<antcall target="generateWlsDaoResponsetime" />
+		<echo message="wait 10 seconds for awr report to generate file" />
+		<sleep seconds="10" />
+		<antcall target="disableManagedServer" />
+		<antcall target="retrievelogs" />
+		<sleep seconds="10" />
+	</target>
+	
+	<target name="startTest3"
+	        description="Will not stop managedserver after test">
+		<antcall target="sync" />
+		<antcall target="enableManagedServer" />
+		<antcall target="enableMBeanLogging" />
+		<antcall target="enableAwrSnapshot" />
+		<antcall target="enablePerfviewLogging" />
+		<antcall target="enableNmonLogging" />
+		<antcall target="setStartTimeProperty" />
+		<antcall target="startJmeterTest" />
+		<antcall target="setEndTimeProperty" />
+		<antcall target="disableMBeanLogging" />
+		<antcall target="disableAwrSnapshot" />
+		<antcall target="disablePerfviewLogging" />
+		<antcall target="disableNmonLogging" />
+		<antcall target="generateMBeanReport" />
+		<antcall target="generateJmeterReport" />
+		<antcall target="generateAwrReport" />
+		<antcall target="generateServiceMetricReport" />
+		<antcall target="generateWlsDaoResponsetime" />
+		<echo message="wait 10 seconds for awr report to generate file" />
+		<sleep seconds="10" />
+		<antcall target="retrievelogs" />
+		<sleep seconds="10" />
+	</target>
+	
+	<target name="stopTest3"
+	        description="get wls dao responsetime">
+		<antcall target="stopJmeterTest" />
+		<antcall target="setEndTimeProperty" />
+		<antcall target="disableMBeanLogging" />
+		<antcall target="disableAwrSnapshot" />
+		<antcall target="disablePerfviewLogging" />
+		<antcall target="disableNmonLogging" />
+		<antcall target="generateMBeanReport" />
+		<antcall target="generateJmeterReport" />
+		<antcall target="generateAwrReport" />
+		<antcall target="generateServiceMetricReport" />
+		<antcall target="generateWlsDaoResponsetime" />
+		<echo message="wait 10 seconds for awr report to generate file" />
+		<sleep seconds="10" />
+		<antcall target="retrievelogs" />
+		<sleep seconds="10" />
+	</target>
+	
+	<target name="enableDatabase" description="Startup database">
+		<parallel>
+			<remoteantwrap serverprefix="rac1">
+				<nested-element>
+					<sendfile file="${basedir}/dist/${@{serverprefix}.oracle.pfile}"
+					          tofile="${@{serverprefix}.basedir}/initorcl_test1.ora" />
+					<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enableDatabase" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+			<remoteantwrap serverprefix="rac2">
+				<nested-element>
+					<sendfile file="${basedir}/dist/${@{serverprefix}.oracle.pfile}"
+					          tofile="${@{serverprefix}.basedir}/initorcl_test1.ora" />
+					<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enableDatabase" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+			<remoteantwrap serverprefix="rac3">
+				<nested-element>
+					<sendfile file="${basedir}/dist/${@{serverprefix}.oracle.pfile}"
+					          tofile="${@{serverprefix}.basedir}/initorcl_test1.ora" />
+					<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enableDatabase" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+		</parallel>
+	</target>
+
+	<target name="enableAdminServer" description="Startup Weblogic Admin Server">
+		<remoteantcmd serverprefix="wls1" module="weblogic" action="adminserver" target="enable" />
+	</target>
+
+	<target name="configAdminServer" description="Config domain">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<sendfile file="${basedir}/dist/domain.py"
+				          tofile="${@{serverprefix}.basedir}/domain.py" />
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="configdomain"  inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableManagedServer" description="Start Managed Servers">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="enableManagedServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="enableManagedServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="setServerStartArgs" description="setServerStartArgs">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="setServerStartArgs" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="setServerStartArgs" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+
+	<target name="enableJmeterServer">
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="enableJmeterServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="enableJmeterServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableDatabaseConfig">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enableDatabaseConfig" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enableDatabaseConfig" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableData">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enableData" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableApplication">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="enableApplication" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableJmeterTestPlan">
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="enableJmeterTestPlan" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableMBeanLogging" description="Sets WLDF Module for harvesting data">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="enableMBeanLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enablePerfviewLogging" description="Starts scripts getting stats from oracle">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enablePerfviewLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enablePerfviewLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="enablePerfviewLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="enableNmonLogging" description="starts nmon">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="enableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="startJmeterTest" description="start jmeter test">
+		<local name="jmeter1testplanexist"/>
+		<available file="${basedir}/dist/jmeter1.jmetertestplan.jmx.template" property="jmeter1testplanexist"/>
+		<if>
+			<isset property="jmeter1testplanexist" />
+			<then>
+				<copy file="${basedir}/dist/jmeter1.jmetertestplan.jmx.template" tofile="${basedir}/dist/jmeter1.jmetertestplan.jmx" overwrite="true">
+					<filterset>
+						<filtersfile file="${basedir}/dist/jmeter1.properties" />
+					</filterset>
+				</copy>
+				<remoteantwrap serverprefix="jmeter1">
+					<nested-element>
+						<sendfile file="${basedir}/dist/jmeter1.jmetertestplan.jmx"
+						          tofile="${@{serverprefix}.basedir}/jmetertestplan.jmx" />
+					</nested-element>
+				</remoteantwrap>
+			</then>
+		</if>
+		
+		<parallel>
+			<remoteantwrap serverprefix="jmeter1">
+				<nested-element>
+					<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml"
+					        target="startJmeterTest"
+					        inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+			<remoteantwrap serverprefix="jmeter2">
+				<nested-element>
+					<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml"
+					        target="startJmeterTest"
+					        inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+		</parallel>
+	</target>
+
+	<target name="stopJmeterTest" description="stop jmeter test">
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml"
+				        target="stopJmeterTest"
+				        inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml"
+				        target="stopJmeterTest"
+				        inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disableMBeanLogging" description="clear wldf config for harvesting">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="disableMBeanLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disablePerfviewLogging" description="stops shell to monitor data">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="disablePerfviewLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="disablePerfviewLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="disablePerfviewLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disableNmonLogging" description="stops nmon">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/nmon/base-build.xml" target="disableNmonLogging" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disableDatabase">
+		<parallel>
+			<remoteantwrap serverprefix="rac1">
+				<nested-element>
+					<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="disableDatabase" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+			<remoteantwrap serverprefix="rac2">
+				<nested-element>
+					<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="disableDatabase" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+			<remoteantwrap serverprefix="rac3">
+				<nested-element>
+					<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="disableDatabase" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+				</nested-element>
+			</remoteantwrap>
+		</parallel>
+	</target>
+
+	<target name="disableAdminServer">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="disableAdminServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disableManagedServer">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="disableManagedServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="disableManagedServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disableJmeterServer">
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="disableJmeterServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="disableJmeterServer" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="generateMBeanReport" description="export harvest data">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="exportData" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="exportData" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="generateJmeterReport" description="generate jmeter report">
+		<remoteantwrap serverprefix="jmeter1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="generateReport" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="jmeter2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/jmeter/base-build.xml" target="generateReport" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="enableAwrSnapshot" description="begin-awr-snapshot">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="begin-awr-snapshot" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="disableAwrSnapshot" description="generate jmeter report">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="end-awr-snapshot" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+		
+	<target name="generateAwrReport" description="generate jmeter report">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-awr-report" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-awr-report" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-awr-report" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-ash-report-bytesttime" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-ash-report-bytesttime" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-ash-report-bytesttime" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+				
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="generate-addm-report" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="generateServiceMetricReport" description="generateServiceMetricReport">
+		<remoteantwrap serverprefix="rac1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="exec-response-time-history" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="exec-response-time-history" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="rac3">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/oracle/base-build.xml" target="exec-response-time-history" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="startCpuLoadingScript" description="start cpu load script">
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/scripts/base-build.xml" target="startCpuLoadingScript" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="stopCpuLoadingScript" description="start cpu load script">
+		<remoteantwrap serverprefix="rac2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/scripts/base-build.xml" target="stopCpuLoadingScript" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="generateWlsDaoResponsetime" description="generateWlsDaoResponsetime">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/scripts/base-build.xml" target="executeWget" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="enableNodeManager" description="enableNodeManager">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="enableNodeManager" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="enableNodeManager" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="configNodeManager" description="configNodeManager">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="configNodeManager" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="configNodeManager" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="disableNodeManager" description="disableNodeManager">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="disableNodeManager" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="disableNodeManager" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+	<target name="echop" description="Start Managed Servers">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/scripts/base-build.xml" target="echop" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/scripts/base-build.xml" target="echop" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="createDomain" description="createDomain">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="createDomain" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+		<remoteantwrap serverprefix="wls2">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.projecthome}/modules/weblogic/base-build.xml" target="createDomain" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+	
+	<target name="testtest" description="enable">
+		<remoteantwrap serverprefix="wls1">
+			<nested-element>
+				<runant antfile="${@{serverprefix}.modules.dir}/test/build.xml" target="enable" inheritall="true" dir="${@{serverprefix}.basedir}"/>
+			</nested-element>
+		</remoteantwrap>
+	</target>
+
+</project>

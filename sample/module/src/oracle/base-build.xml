@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="oracle-base-build" default="help" basedir="./" >
+	<import file="macro-build.xml"/>
+	<import file="../util-build.xml"/>
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<taskdef name="sqlplus" classname="net.sf.incanto.Sqlplus"/>
+
+	<property file="${propertyfile}"/>
+
+	<target name="help">
+
+	</target>
+
+	<target name="enableDatabase">
+		<echo message="${oracle.instance.name}"/>
+		<start-instance pfile="${oracle.pfile}" />
+		<echo message="result exit code: ${start.exitvalue}"/>
+	</target>
+
+	<target name="enableDatabaseConfig">
+	</target>
+
+	<target name="enableData">
+
+	</target>
+
+	<target name="enablePerfviewLogging">
+		<antcall target="start-monitorcachehit"/>
+		<antcall target="start-monitorservicemitrice"/>
+		<antcall target="start-monitorwaitevent"/>
+		<antcall target="start-monitorsqlexec"/>
+		<antcall target="exec-bufferfreespace"/>
+	</target>
+
+	<target name="disablePerfviewLogging">
+		<antcall target="stop-monitorcachehit"/>
+		<antcall target="stop-monitorservicemitrice"/>
+		<antcall target="stop-monitorwaitevent"/>
+		<antcall target="stop-monitorsqlexec"/>
+		<antcall target="exec-bufferfreespace"/>
+	</target>
+
+	<target name="disableDatabase">
+		<shutdown-instance/>
+	</target>
+
+	<target name="testsqlplus">
+		<execsqlcmd commands="select status from v$instance;"/>
+	</target>
+
+	<target name="start-monitorcachehit">
+		<enableloop scriptfile="cachehit.sql" interval="${oracle.monitor.interval}" logfile="${cases.logdir}/cachehit.sql.${serverprefix}.log" />
+		<logstatus name="monitorcachehit" status="enabled"/>
+	</target>
+	
+
+	<target name="stop-monitorcachehit">
+		<killproc procstring="cachehit.sql" />
+	</target>
+	
+	<target name="start-monitorservicemitrice">
+		<enableloop scriptfile="servicemetric.sql" interval="${oracle.monitor.interval}" logfile="${cases.logdir}/servicemetric.sql.${serverprefix}.log" />
+	</target>
+
+	<target name="stop-monitorservicemitrice">
+		<killproc procstring="servicemetric.sql" />
+	</target>
+	
+	<target name="start-monitorwaitevent">
+		<enableloop scriptfile="waitevent.sql" interval="${oracle.monitor.interval}" logfile="${cases.logdir}/waitevent.sql.${serverprefix}.log" />
+	</target>
+
+	<target name="stop-monitorwaitevent">
+		<killproc procstring="waitevent.sql" />
+	</target>
+	
+	<target name="start-monitorsqlexec">
+		<enableloop scriptfile="sqlexec.sql" interval="${oracle.monitor.interval}" logfile="${cases.logdir}/sqlexec.sql.${serverprefix}.log" />
+	</target>
+
+	<target name="stop-monitorsqlexec">
+		<killproc procstring="sqlexec.sql" />
+	</target>
+	
+	<target name="exec-bufferfreespace">
+		<execsql scriptfile="bufferfreespace.sql" logfile="${cases.logdir}/bufferfreespace.sql.${serverprefix}.log" />
+	</target>
+	
+	<target name="begin-awr-snapshot">
+		<antcall target="disable-defaultawrschedule"/>
+		<execsnapshot />
+	</target>
+	
+	<target name="end-awr-snapshot">
+		<execsnapshot />
+		<antcall target="enable-defaultawrschedule"/>
+	</target>
+	
+	<target name="disable-defaultawrschedule">
+		<changesnapshotinterval interval="240" />
+	</target>
+	
+	<target name="enable-defaultawrschedule">
+		<changesnapshotinterval interval="60" />
+	</target>
+	
+	<target name="set-snapshotid">
+		<setjdbc host="${oracle.awr.host}" port="${oracle.awr.port}" instance="${oracle.awr.instance}" user="${oracle.awr.user}" password="${oracle.awr.password}"/>
+		<getsnapshotid/>
+	</target>
+	
+	<target name="generate-awr-report" depends="set-snapshotid">
+		<local name="reportname"/>
+		<if>
+			<equals arg1="${oracle.awr.reporttype}" arg2="html" />
+			<then>
+				<property name="reportname" value="${cases.logdir}/awrreport.${serverprefix}.html"/>
+			</then>
+			<else>
+				<property name="reportname" value="${cases.logdir}/awrreport.${serverprefix}.txt"/>
+			</else>
+		</if>
+		
+		<generate-awr-report reporttype="${oracle.awr.reporttype}" reportname="${reportname}" />
+	</target>
+	
+	<target name="generate-addm-report" depends="set-snapshotid">
+		<generate-addm-report reportname="${cases.logdir}/addm.${serverprefix}.log" />
+	</target>
+	
+	<target name="generate-ash-report">
+		<!-- set default value -->
+		<property name="oracle.ash.duration" value="''"/>
+		<local name="reportname"/>
+		<if>
+			<equals arg1="${oracle.ash.reporttype}" arg2="html" />
+			<then>
+				<property name="reportname" value="${cases.logdir}/ashreport.${serverprefix}.html"/>
+			</then>
+			<else>
+				<property name="reportname" value="${cases.logdir}/ashreport.${serverprefix}.txt"/>
+			</else>
+		</if>
+		
+		<generate-ash-report begintime="${oracle.ash.begintime}" duration="${oracle.ash.duration}" reporttype="${oracle.ash.reporttype}" reportname="${reportname}" />
+	</target>
+	
+	<target name="generate-ash-report-bytesttime">
+		<!-- set default value -->
+		<property name="oracle.ash.duration" value="''"/>
+		<local name="reportname"/>
+		<if>
+			<equals arg1="${oracle.ash.reporttype}" arg2="html" />
+			<then>
+				<property name="reportname" value="${cases.logdir}/ashreport.${serverprefix}.html"/>
+			</then>
+			<else>
+				<property name="reportname" value="${cases.logdir}/ashreport.${serverprefix}.txt"/>
+			</else>
+		</if>
+		<property file="${cases.logdir}/${serverprefix}.testtime.log"/>
+		<generate-ash-report begintime="${starttime}" duration="${duration_min}" reporttype="${oracle.ash.reporttype}" reportname="${reportname}" />
+	</target>
+	
+	<target name="exec-response-time-history">
+		<execsql scriptfile="responsetime.sql" logfile="${cases.logdir}/responsetime.sql.${serverprefix}.log" />
+	</target>
+	
+</project>

@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<project name="pants.sample.site" default="publish-local" xmlns:ivy="antlib:org.apache.ivy.ant">
+	<property file="build.properties"/>
+	<import file="${pants.build.dir}/common.xml"/>
+	
+</project>

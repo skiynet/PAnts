@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="managedserver" default="" basedir="./" >
+
+	<property file="${propertyfile}"/>
+	<property name="weblogic.module.dir" value="${ant.file}/.."/>
+	<import file="macro-build.xml"/>
+	<import file="../common.xml" />
+
+	<macrodef name="create-serverlist">
+		<sequential>
+			<groovy>
+				def idlist = ""
+				//println "show properties= ${properties}"
+				properties.each{ 
+					//println "keys: ${id.key}"
+					keyrexeg = (it.key =~ /^wls\.server\.([0-9]+)\.servername$/)
+					if (keyrexeg.matches()) {
+						idlist = idlist + "," + keyrexeg[0][1]
+					}
+				}
+				project.setProperty("serveridlist", "$idlist")
+			</groovy>
+		</sequential>
+	</macrodef>
+
+	<target name="-start-impl">
+		<create-serverlist/>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<start-managedserver id="@{id}" />
+			</sequential>
+		</for>
+	</target>
+
+	<macrodef name="start-managedserver">
+		<attribute name="id"/>
+		<sequential>
+			<property name="wls.server.@{id}.extra-server-verbose" value="" />
+			<start-server dir="${wls.domain.dir}"
+						  domainname="${wls.domain.name}" 
+			              isAdmin="false"
+			              servername="${wls.server.@{id}.servername}"
+			              host="${wls.server.@{id}.host}"
+			              port="${wls.server.@{id}.port}"
+			              adminserverurl="http://${wls.admin.host}:${wls.admin.port}"
+			              extra-server-verbose="${wls.server.@{id}.extra-server-verbose}"
+			              min-heap="${wls.server.@{id}.min-heap}"
+			              max-heap="${wls.server.@{id}.max-heap}"
+			/>
+		</sequential>
+	</macrodef>
+
+	<target name="-stop-impl">
+		<create-serverlist/>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<stop-managedserver id="@{id}" />
+			</sequential>
+		</for>
+	</target>
+
+	<macrodef name="stop-managedserver">
+		<attribute name="id"/>
+		<sequential>
+			<stop-server host="${wls.server.@{id}.host}"
+			             port="${wls.server.@{id}.port}"
+			             servername="${wls.server.@{id}.servername}" />
+		</sequential>
+	</macrodef>
+
+	<target name="-check-impl">
+		<create-serverlist/>
+		<for list="${serveridlist}" param="id">
+			<sequential>
+				<checkproc-server id="@{id}" />
+			</sequential>
+		</for>
+
+	</target>
+
+	<macrodef name="checkproc-server">
+		<attribute name="id" />
+		<sequential>
+			<checkproc procstring="Dweblogic.Name=${wls.server.@{id}.servername}"
+			           procstring2="Dweblogic.Domain=${wls.domain.name}"
+			           outputproperty="already-started" />
+		</sequential>
+	</macrodef>
+
+</project>

@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="oracle-macro-build" default="" basedir="./" xmlns:ora="antlib:net.sf.incanto">
+
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+
+	<taskdef name="groovy"
+             classname="org.codehaus.groovy.ant.Groovy"/>
+
+	<macrodef name="start-instance">
+		<attribute name="dir" default="${sql.core.dir}"/>
+		<attribute name="properties" default="db.exec.properties"/>
+		<attribute name="logfile" default="sql.log"/>
+		<attribute name="pfile" />
+		<sequential>
+			<ora:sqlplus
+                           resultproperty="start.exitvalue"
+                           logon=" / as sysdba"
+                           silent="true"
+                           failonerror="false">
+				<![CDATA[
+                              startup pfile = @{pfile}
+                             ]]>
+			</ora:sqlplus>
+		</sequential>
+	</macrodef>
+
+
+	<macrodef name="shutdown-instance">
+		<attribute name="dir" default="${sql.core.dir}"/>
+		<attribute name="properties" default="db.exec.properties"/>
+		<attribute name="logfile" default="sql.log"/>
+		<sequential>
+			<ora:sqlplus resultproperty="shutdown.exitvalue"
+			             logon=" / as sysdba"
+			             silent="true"
+			             failonerror="false">
+				<![CDATA[
+					WHENEVER SQLERROR EXIT SQL.SQLCODE
+					select status from v$instance;
+					shutdown immediate
+				]]>
+			</ora:sqlplus>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="execsqlplus">
+		<attribute name="start" />
+		<attribute name="dir"/>
+		<attribute name="properties" default="db.exec.properties"/>
+		<sequential>
+			<ora:sqlplus dir="@{dir}" start="exec.sql" silent="true" failonerror="true" failOnSpoolMatch=".*SP2-[0-9]{4}.*">
+
+			</ora:sqlplus>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="execsnapshot">
+		<sequential>
+			<ora:sqlplus failonerror="true" logon=" / as sysdba" resultproperty="execsnapshot.exitvalue" >
+				<![CDATA[
+				exec dbms_workload_repository.create_snapshot();
+				]]>
+			</ora:sqlplus>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="changesnapshotinterval">
+		<attribute name="interval" />
+		<sequential>
+			<ora:sqlplus failonerror="true" logon=" / as sysdba" resultproperty="changesnapshotinterval.exitvalue" >
+				<![CDATA[
+				exec dbms_workload_repository.modify_snapshot_settings(interval => @{interval});
+				]]>
+			</ora:sqlplus>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="setjdbc">
+		<attribute name="host"/>
+		<attribute name="port"/>
+		<attribute name="instance"/>
+		<attribute name="user"/>
+		<attribute name="password"/>
+		<sequential>
+			<property name="setjdbc_host" value="@{host}"/>
+			<property name="setjdbc_port" value="@{port}"/>
+			<property name="setjdbc_instance" value="@{instance}"/>
+			<property name="setjdbc_user" value="@{user}"/>
+			<property name="setjdbc_password" value="@{password}"/>
+			<groovy>
+            import groovy.sql.Sql
+            def sql = Sql.newInstance("jdbc:oracle:thin:@${properties['setjdbc_host']}:${properties['setjdbc_port']}:${properties['setjdbc_instance']}",
+                           "${properties['setjdbc_user']}", "${properties['setjdbc_password']}",
+                           "oracle.jdbc.driver.OracleDriver")
+            project.addReference("groovy.sqlinstance", sql)
+			</groovy>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="getsnapshotid">
+		<sequential>
+			<groovy>
+                    def sql = project.getReference("groovy.sqlinstance")
+                    def beginid
+                    sql.eachRow("select max(snap_id) snapid from dba_hist_snapshot") {
+                      project.setProperty("endsnapid", "$it.snapid")
+                      beginid = it.snapid - 1
+                    }
+                    project.setProperty("beginsnapid", "$beginid")
+			</groovy>
+			<!--
+<echo message="endid ${endsnapid}"/>
+<echo message="beginid ${beginsnapid}"/>
+-->
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generate-awr-report">
+		<attribute name="beginsnapid" default="${beginsnapid}"/>
+		<attribute name="endsnapid" default="${endsnapid}"/>
+		<attribute name="reporttype" default="text" />
+		<attribute name="reportname" />
+		<sequential>
+			<copy file="${projecthome}/modules/oracle/awrreport.sql.template" tofile="awrreport.sql" overwrite="true">
+				<filterset>
+					<filter token="beginsnapid" value="@{beginsnapid}" />
+					<filter token="endsnapid" value="@{endsnapid}" />
+					<filter token="reporttype" value="@{reporttype}" />
+					<filter token="reportname" value="@{reportname}" />
+				</filterset>
+			</copy>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+					${projecthome}/modules/oracle/exec_sqlplus.sh awrreport.sql | sqlplus -s >> generate-awr-report.log 
+				]]>
+				exit $?
+			</shellscript>
+			<!--
+                        <ora:sqlplus silent="false" failonerror="false" logon=" / as sysdba" resultproperty="execawrrpt.exitvalue" >
+                                <![CDATA[
+                                define begin_snap=@{beginsnapid}
+                                define end_snap=@{endsnapid}
+                                define report_type='text'
+                                define report_name=reporttest.txt
+                                @$ORACLE_HOME/rdbms/admin/awrrpt.sql
+                             ]]>
+                        </ora:sqlplus>
+-->
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generate-addm-report">
+		<attribute name="beginsnapid" default="${beginsnapid}"/>
+		<attribute name="endsnapid" default="${endsnapid}"/>
+		<attribute name="reportname" />
+		<sequential>
+			<copy file="${projecthome}/modules/oracle/addm.sql.template" tofile="addm.sql" overwrite="true">
+				<filterset>
+					<filter token="beginsnapid" value="@{beginsnapid}" />
+					<filter token="endsnapid" value="@{endsnapid}" />
+				</filterset>
+			</copy>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+					${projecthome}/modules/oracle/exec_sqlplus.sh addm.sql | sqlplus -s >> @{reportname} 
+				]]>
+				exit $?
+			</shellscript>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generate-ash-report">
+		<attribute name="begintime" default="${begintime}"/>
+		<attribute name="duration" default="${duration}"/>
+		<attribute name="reporttype" default="text" />
+		<attribute name="reportname" />
+		<sequential>
+			<copy file="${projecthome}/modules/oracle/ashreport.sql.template" tofile="ashreport.sql" overwrite="true">
+				<filterset>
+					<filter token="begin_time" value="@{begintime}" />
+					<filter token="duration" value="@{duration}" />
+					<filter token="reporttype" value="@{reporttype}" />
+					<filter token="reportname" value="@{reportname}" />
+				</filterset>
+			</copy>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+					${projecthome}/modules/oracle/exec_sqlplus.sh ashreport.sql | sqlplus -s >> generate-ash-report.log 
+				]]>
+				exit $?
+			</shellscript>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="execsqlcmd">
+		<attribute name="commands" />
+		<attribute name="dir" default="${sql.core.dir}"/>
+		<attribute name="properties" default="db.exec.properties"/>
+		<attribute name="logfile" default="sql.log"/>
+		<sequential>
+			<ora:sqlplus silent="false" failonerror="true" logon=" / as sysdba" >
+				@{commands}
+			</ora:sqlplus>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="enableloop">
+		<attribute name="scriptfile" />
+		<attribute name="logfile" default="@{scriptfile}.log" />
+		<attribute name="interval" />
+		<sequential>
+			<copy file="${projecthome}/modules/oracle/@{scriptfile}.template" tofile="@{scriptfile}" overwrite="true">
+				<filterset>
+					<filtersfile file="build.properties" />
+				</filterset>
+			</copy>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+					${projecthome}/modules/oracle/loop_sqlplus.sh @{interval} @{scriptfile} | sqlplus -s > @{logfile} &
+				]]>
+				exit $?
+			</shellscript>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="execsql">
+		<attribute name="scriptfile" />
+		<attribute name="logfile" default="@{scriptfile}.log" />
+		<sequential>
+			<if>
+				<available file="${projecthome}/modules/oracle/@{scriptfile}.template"/>
+				<then>
+					<copy file="${projecthome}/modules/oracle/@{scriptfile}.template" tofile="@{scriptfile}" overwrite="true">
+						<filterset>
+							<filtersfile file="build.properties" />
+						</filterset>
+					</copy>
+					<shellscript shell="bash" dir="." failonerror="true">
+						<![CDATA[
+		                    ${projecthome}/modules/oracle/exec_sqlplus.sh @{scriptfile} | sqlplus -s >> @{logfile} &
+						]]>
+						exit $?
+					</shellscript>
+				</then>
+				<else>
+					<shellscript shell="bash" dir="." failonerror="true">
+						<![CDATA[
+		                    ${projecthome}/modules/oracle/exec_sqlplus.sh ${projecthome}/modules/oracle/@{scriptfile} | sqlplus -s >> @{logfile} &
+						]]>
+						exit $?
+					</shellscript>
+				</else>
+			</if>
+
+		</sequential>
+	</macrodef>
+</project>

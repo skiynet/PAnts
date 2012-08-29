@@ -1,0 +1,18 @@
+<project name="AntCrawlerTasks-test" default="test">
+	<path id="testjar">
+		<fileset dir="../build">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+
+	<taskdef classpathref="testjar" resource="tasks.properties" />
+
+	<target name="test" >
+		<gather-rep>
+			<fileset dir="." includes="*.properties" />
+		</gather-rep>
+		<echoproperties/>
+	</target>
+
+
+</project>

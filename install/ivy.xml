@@ -1,0 +1,15 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.install"/>
+    <configurations>
+    	<conf name="server" description="server side component"/>
+    	<conf name="agent" description="agent side component"/>
+    	<conf name="default" description="build"/>
+    </configurations>
+    <publications>
+    	<artifact name="pants.install" type="installer" ext="zip"/>
+    </publications>
+    <dependencies>
+        <dependency org="net.skiy" name="pants.server" rev="latest.integration" conf="server->default"/>
+        <dependency org="net.skiy" name="pants.agent" rev="latest.integration" conf="agent->default"/>
+    </dependencies>
+</ivy-module>

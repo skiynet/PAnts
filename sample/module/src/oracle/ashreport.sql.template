@@ -1,0 +1,5 @@
+define begin_time=@begin_time@
+define duration=@duration@
+define report_type='@reporttype@'
+define report_name=@reportname@
+@$ORACLE_HOME/rdbms/admin/ashrpt.sql

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="util-build" default="" basedir="./">
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<macrodef name="killproc">
+		<attribute name="procstring" />
+		<attribute name="procstring2" default="''"/>
+		<attribute name="procstring3" default="''"/>
+		<attribute name="signalarg" default=""/>
+		<sequential>
+			<shellscript shell="bash" dir=".">
+				PID=`ps -ef | grep @{procstring} | grep @{procstring2} | grep @{procstring3} | grep -v grep | awk '{print $2}'`
+				if [ "$PID" == "" ]; then
+				  echo "Process @{procstring} @{procstring2} @{procstring3} not found. exiting."
+				  exit 0
+				fi
+				echo "pid: $PID"
+				kill @{signal} $PID
+			</shellscript>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="checkproc">
+		<attribute name="procstring" />
+		<attribute name="procstring2" default="''"/>
+		<attribute name="procstring3" default="''"/>
+		<attribute name="outputproperty" />
+		<sequential>
+			<local name="result"/>
+			<shellscript shell="bash" dir="." resultproperty="result">
+				PID=`ps	-ef | grep @{procstring} | grep @{procstring2} | grep @{procstring3} | grep -v grep | awk '{print $2}'`
+				if [ "$PID" != "" ]; then
+				  echo "Process @{procstring} @{procstring2} @{procstring3} found. Pid is $PID."
+				  exit 0
+				fi
+				echo "Process not found"
+				exit 1
+			</shellscript>
+			<echo message="return code: ${result}" />
+			<if>
+				<not><equals arg1="${result}" arg2="0" /></not>
+				<then>
+					<echo message="Process @{procstring} not found."/>
+				</then>
+				<else>
+					<echo message="Process @{procstring} found." />
+					<property name="@{outputproperty}" value="true" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="logstatus">
+		<attribute name="name" />
+		<attribute name="status" />
+		<attribute name="file" default="${basedir}/status.properties"/>
+		<sequential>
+			<touch file="@{file}"/>
+			<local name="now"/>
+			<tstamp>
+				<format property="now"
+				        pattern="yyyy-MM-dd HH.mm.s"/>
+			</tstamp>
+			<var file="@{file}" />
+			<var name="stat.@{name}" value="@{status} (updated at ${now})"/>
+			<echoproperties destfile="@{file}" prefix="stat." />
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="printstatus">
+		<attribute name="file" default="${basedir}/status.properties"/>
+		<sequential>
+			<var file="@{file}" />
+			<echoproperties prefix="stat." />
+		</sequential>
+	</macrodef>
+	
+
+</project>

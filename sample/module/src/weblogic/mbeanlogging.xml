@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="mbeanlogging" default="" basedir="./" >
+
+	<property file="${propertyfile}"/>
+	<property name="weblogic.module.dir" value="${ant.file}/.."/>
+	<import file="macro-build.xml"/>
+	<import file="../common.xml" />
+
+	<target name="-start-impl">
+		<generatewldfmodulefile modulename="${wls.modulename}"
+			modulefile="${wls.modulefile}" moduleperiod="${wls.moduleperiod}"
+			wldf.harvestedtype.selector="${wldf.harvestedtype.selector}" />
+		<wldfmodule-enable admin.host="${wls.admin.host}"
+			admin.port="${wls.admin.port}" username="${wls.admin.user}" passwd="${wls.admin.passwd}"
+			modulename="${wls.modulename}" modulefile="${wls.modulefile}"
+			modulecomment="${wls.modulecomment}" />
+	</target>
+
+	<target name="-stop-impl">
+		<wldfmodule-clear admin.host="${wls.admin.host}"
+		                   admin.port="${wls.admin.port}"
+		                   username="${wls.admin.user}"
+		                   passwd="${wls.admin.passwd}"/>
+	</target>
+	
+	<target name="-check-impl">
+	</target>
+
+</project>

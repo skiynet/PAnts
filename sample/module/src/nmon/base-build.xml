@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="nmon-base-build" default="help" basedir="./" >
+	<import file="macro-build.xml"/>
+	<property file="${propertyfile}"/>
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	
+	<target name="help">
+		
+	</target>
+	
+	<target name="enableNmonLogging">
+		<!--
+		<tstamp>
+			<format property="now"
+			        pattern="yyyy-MM-dd-HH-mm-ss"/>
+		</tstamp>
+		-->
+		<startNmonLogging outfile="${cases.logdir}/nmon.${serverprefix}.out"/>
+	</target>
+	
+	<target name="disableNmonLogging">
+		<stopNmonLogging />
+	</target>
+	
+</project>

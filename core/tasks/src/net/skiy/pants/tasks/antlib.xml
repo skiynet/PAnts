@@ -1,0 +1,11 @@
+<antlib>
+	<taskdef name="state-list" classname="net.skiy.pants.tasks.StateListTask" />
+	<taskdef name="state-sync" classname="net.skiy.pants.tasks.StateSyncTask" />
+	<typedef name="state" classname="net.skiy.pants.tasks.StateType" />
+	<typedef name="antserver" classname="net.skiy.pants.tasks.antserver.server.ServerTask" />
+	<typedef name="remoteant" classname="net.skiy.pants.tasks.antserver.client.ClientTask" />
+	<typedef name="generate-properties" classname="net.skiy.pants.tasks.agentproperty.GenerateProperties" />
+	<typedef name="load-project-properties" classname="net.skiy.pants.tasks.agentproperty.LoadProjectProperties" />
+	<typedef name="load-install-properties" classname="net.skiy.pants.tasks.agentproperty.LoadInstallProperties" />
+	
+</antlib>

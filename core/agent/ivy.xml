@@ -1,0 +1,25 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.agent"/>
+    <publications>
+    	<artifact name="pants.agent" type="ant" ext="zip"/>
+    </publications>
+    <dependencies>
+    <!-- 
+    	<dependency org="org.apache.ant" name="ant" rev="1.8.2" />
+    	<dependency org="local" name="jdk-linux-x64" rev="7u3" />
+     -->	
+    	<dependency org="xml-apis" name="xml-apis" rev="1.4.01">
+    		<artifact name="xml-apis" type="jar"/>
+    	</dependency>
+    	<dependency org="xerces" name="xercesImpl" rev="2.6.2">
+    		<artifact name="xercesImpl" type="jar"/>
+    	</dependency>
+    	<dependency org="ant-contrib" name="ant-contrib" rev="1.0b3" transitive="false" >
+    		<artifact name="ant-contrib" type="jar" />
+    	</dependency>
+    	<dependency org="net.skiy" name="pants.tasks" rev="latest.integration" conf="*->runtime" />
+    	<!-- 
+    	<dependency org="com.example" name="ServerTaskPatch" rev="latest.integration" conf="default->runtime"/>
+    	 -->
+    </dependencies>
+</ivy-module>

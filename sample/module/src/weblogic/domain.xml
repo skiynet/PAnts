@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="domain" default="" basedir="./">
+
+	<property file="${propertyfile}" />
+	<property name="weblogic.module.dir" value="${ant.file}/.." />
+	<import file="macro-build.xml" />
+	<import file="../common.xml" />
+
+	<target name="-start-impl">
+		<createdomain wls.server.dir="${wls.server.dir}"
+			wls.domain.dir="${wls.domain.dir}" />
+		<executewlst filename="${basedir}/domain.py"
+		             admin.host="${wls.admin.host}"
+		             admin.port="${wls.admin.port}"
+		             username="${wls.admin.user}"
+		             passwd="${wls.admin.passwd}" />
+	</target>
+
+	<target name="-stop-impl">
+	</target>
+
+	<target name="-check-impl">
+	</target>
+
+</project>

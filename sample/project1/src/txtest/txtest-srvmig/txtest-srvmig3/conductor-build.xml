@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="txtest-srvmig3" default="" basedir="./">
+	<property name="projectsite" value="elb01-txtest3" />
+	<property environment="env"/>
+	<property name="root.dir" value="${env.ANTCRAWLER_HOME}" />
+	<import file="${root.dir}/cases/cases-master.build.xml" />
+
+	<!-- シングルMNのコンフィグ -->
+</project>

@@ -1,0 +1,656 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="cases-master" xmlns:pants="antlib:net.skiy.pants.tasks">
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+	<taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy"/>
+
+	<property name="serversidepropertyfilename" value="build.properties" />
+
+	<macrodef name="clear-properties">
+		<sequential>
+			<delete>
+				<fileset dir="${basedir}"
+				         includes="*.properties"
+				         excludes="*conductor-build.properties" />
+			</delete>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generate-distresources">
+		<attribute name="basedir" />
+		<sequential>
+			<if>
+				<isset property="is.windows" />
+				<then>
+					<propertyregex property="convertedbasedir"
+					               input="@{basedir}"
+					               regexp="\\"
+					               replace="\\\\"
+					               global="true" />
+				</then>
+				<else>
+					<property name="convertedbasedir"
+					          value="@{basedir}" />
+				</else>
+			</if>
+			<groovy>
+				<![CDATA[
+					def basedir = properties["convertedbasedir"]
+					println "basedir: " + basedir
+					
+					def basedistdir = new  File(basedir + "/dist")
+					basedistdir.mkdir()
+					basedistdir.eachFile {
+					            println "delete File ${it.canonicalPath}";
+					            it.delete()
+					}
+					println "basedistdir: " +  basedistdir.canonicalPath
+
+					def nowdir = new File(basedir)
+					
+					while ( nowdir.getName() != "cases" ) {
+						def nowresourcedir = new File(nowdir.canonicalPath + "/resource")
+
+						if ( nowresourcedir.exists() ) {
+							nowresourcedir.eachFile{
+								if (it.isFile()) {
+									println "it.getName: " + it.getName()
+									def f = new File(basedistdir.canonicalPath + "/" + it.getName())
+									if (!f.exists()) {
+										f << it.readBytes()
+									}
+								}
+							}
+						} else {
+							println "nowresourcedir does not exist: " + nowresourcedir.canonicalPath
+						}
+					
+						nowdir = new File(nowdir.parent) 
+						println "nowdir.getName(): "+ nowdir.getName()
+					}
+
+				]]>
+			</groovy>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generate-properties">
+		<attribute name="serverprefix" />
+		<attribute name="todir" />
+		<sequential>
+			<echoproperties destfile="@{todir}/@{serverprefix}.properties">
+				<!-- all will be overrided by server -->
+				<propertyset>
+					<propertyref prefix="@{serverprefix}." />
+					<mapper type="glob" from="@{serverprefix}.*" to="*" />
+				</propertyset>
+				<propertyset>
+					<propertyref prefix="all." />
+					<mapper type="glob" from="all.*" to="*" />
+				</propertyset>
+			</echoproperties>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="sync_module_file">
+		<attribute name="serverprefix" />
+		<attribute name="server.address" />
+		<attribute name="server.port" />
+		<sequential>
+			<pants:remoteant machine="@{server.address}" port="@{server.port}">
+				<!--
+				<sendfile file="${root.dir}/antserver/antserver-init-build.xml"
+				          tofile="antserver-init-build.xml" />
+				          -->
+				<sendfile file="${root.dir}/modules.zip" tofile="modules.zip" />
+				<runant antfile="antserver-init-build.xml"
+				        target="clear_modules" />
+				<runant antfile="antserver-init-build.xml"
+				        target="unzip_modules" />
+				<runant antfile="antserver-init-build.xml"
+				        target="chmodfiles" />
+			</pants:remoteant>
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="sync_module_file_wrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<sync_module_file serverprefix="@{serverprefix}"
+					                  server.address="${@{serverprefix}.antserver.address}"
+					                  server.port="${@{serverprefix}.antserver.port}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	<macrodef name="remoteantcmd">
+		<attribute name="serverprefix" />
+		<attribute name="module" />
+		<attribute name="action" />
+		<attribute name="target" />
+		<sequential>
+			<remoteantwrap serverprefix="@{serverprefix}">
+				<nested-element>
+					<runant antfile="${@{serverprefix}.projecthome}/${pants.server.module.dir}/${pants.module.ant.dir}/@{module}/@{action}.xml"
+					        target="@{target}"
+					        inheritall="true" dir="${@{serverprefix}.basedir}"
+						
+					>
+						<property name="propertyfile" value="build.properties" />
+					</runant>
+				</nested-element>
+			</remoteantwrap>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="remoteantcp">
+		<attribute name="serverprefix" />
+		<attribute name="file" />
+		<attribute name="tofile" />
+		<sequential>
+			<remoteantwrap serverprefix="@{serverprefix}">
+				<nested-element>
+					<sendfile file="${basedir}/dist/${@{serverprefix}.@{file}"
+					          tofile="${@{serverprefix}.basedir}/@{tofile}" />
+				</nested-element>
+			</remoteantwrap>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="remoteantwrap">
+		<attribute name="serverprefix" />
+		<element name="nested-element" />
+		<sequential>
+			<echo message="======================================================================"/>
+			<groovy>
+				println target.getName() + ":"
+			</groovy>
+			<echo message="Started remote build for @{serverprefix}."/>
+			<echo message="======================================================================"/>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<fail unless="@{serverprefix}.antserver.address" message="Property is not set: @{serverprefix}.antserver.address" />
+					<fail unless="@{serverprefix}.antserver.address" message="Property is not set: @{serverprefix}.antserver.port" />
+					<pants:remoteant machine="${@{serverprefix}.antserver.address}"
+					           port="${@{serverprefix}.antserver.port}">
+						<nested-element />
+					</pants:remoteant>
+					<echo message="======================================================================"/>
+					<groovy>
+						println target.getName() + ":"
+					</groovy>
+					<echo message="Finished remote build for @{serverprefix}."/>
+					<echo message="======================================================================"/>
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+
+	<property name="antbinfile" value="apache-ant-1.8.2-bin.zip" />
+	<property name="anttopdir" value="apache-ant-1.8.2" />
+	<property name="jdkbinfile" value="jdk-linux-x64-7u3.tar.gz" />
+	<property name="jdktopdir" value="jdk1.7.0_03" />
+
+	<macrodef name="createdirectories" description="Create directory needed">
+		<attribute name="server.address"/>
+		<attribute name="user.name"/>
+		<attribute name="user.password"/>
+		<attribute name="basedir" />
+		<sequential>
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="mkdir -p @{basedir}; mkdir -p @{basedir}/log "
+			         trust="yes" />
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="createdirectorieswrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<createdirectories server.address="${@{serverprefix}.antserver.address}"
+					                   user.name="${@{serverprefix}.user.name}"
+					                   user.password="${@{serverprefix}.user.password}"
+					                   basedir="${@{serverprefix}.projecthome}/${@{serverprefix}.basedir}/@{serverprefix}" />
+				</then>
+				<copy>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	
+	<macrodef name="send-properties" description="send files in dist">
+		<attribute name="serverprefix" />
+		<attribute name="server.address" />
+		<attribute name="server.port" />
+		<attribute name="casebasedir" />
+		<sequential>
+			<echo message="@{server.address}:@{server.port}, ${basedir}/dist/@{serverprefix}.properties, @{casebasedir}/${serversidepropertyfilename}"/>
+			<pants:remoteant machine="@{server.address}" port="@{server.port}">
+				<sendfile file="${basedir}/dist/@{serverprefix}.properties"
+				          tofile="@{casebasedir}/${serversidepropertyfilename}" />
+			</pants:remoteant>
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="send-properties-wrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<send-properties serverprefix="@{serverprefix}"
+		                  server.address="${@{serverprefix}.antserver.address}"
+		                  server.port="${@{serverprefix}.antserver.port}"
+						casebasedir="${@{serverprefix}.basedir}/@{serverprefix}"/>
+
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	
+	<macrodef name="retrievelogs" description="Sends and unzips ant and jdk binaries in {root}/binaries/tools. Then put libraries under {root}/binaries/ext into ant's lib directory.">
+		<attribute name="user.name" />
+		<attribute name="user.password" />
+		<attribute name="server.address" />
+		<attribute name="todir" />
+		<attribute name="basedir" />
+		<attribute name="serverprefix" />
+		<attribute name="comment" default=""/>
+		<sequential>
+			<local name="server.address"/>
+			<local name="now"/>
+			<property name="server.address" value="@{server.address}" />
+			<tstamp>
+				<format property="now"
+				        pattern="yyyy-MM-dd-HH-mm-ss"/>
+			</tstamp>
+			<!-- rjm r:recurse dir j:do not include directory 'log' m:delete source file -->
+			<sshexec host="@{server.address}"
+			         username="@{user.name}"
+			         password="@{user.password}"
+			         command="cd @{basedir}; cp build.properties log/@{serverprefix}.build.properties; zip -r log.@{serverprefix}.${now}_@{comment}.zip log; if [ $? -eq 0 ]; then rm -f log/*; fi"
+			         trust="yes" />
+			<scp file="@{user.name}@${server.address}:@{basedir}/log.@{serverprefix}.${now}_@{comment}.zip"
+			     todir="@{todir}"
+			     password="@{user.password}"
+			     trust="yes" />
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="retrievelogswrap">
+		<attribute name="serverprefix" />
+		<attribute name="todir" />
+		<attribute name="logcomment" default=""/>
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<retrievelogs server.address="${@{serverprefix}.antserver.address}"
+					              todir="@{todir}"
+					              user.name="${@{serverprefix}.user.name}"
+					              user.password="${@{serverprefix}.user.password}"
+					              basedir="${@{serverprefix}.projecthome}/${@{serverprefix}.basedir}/@{serverprefix}"
+					              serverprefix="@{serverprefix}" 
+					              comment="@{logcomment}"/>
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	
+	<macrodef name="setStartTimeProperty">
+		<attribute name="serverprefix" />
+		<attribute name="server.address" />
+		<attribute name="server.port" />
+		<sequential>
+			<pants:remoteant machine="@{server.address}" port="@{server.port}">
+				<runant antfile="${@{serverprefix}.projecthome}/modules/generic/base-build.xml"
+				        target="setStartTimeProperty" inheritall="true" dir="${@{serverprefix}.basedir}/@{serverprefix}" />
+			</pants:remoteant>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="setEndTimeProperty">
+		<attribute name="serverprefix" />
+		<attribute name="server.address" />
+		<attribute name="server.port" />
+		<sequential>
+			<pants:remoteant machine="@{server.address}" port="@{server.port}">
+				<runant antfile="${@{serverprefix}.projecthome}/modules/generic/base-build.xml"
+				        target="setEndTimeProperty" inheritall="true" dir="${@{serverprefix}.basedir}/@{serverprefix}" />
+			</pants:remoteant>
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="setStartTimePropertyWrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<setStartTimeProperty serverprefix="@{serverprefix}"
+					                  server.address="${@{serverprefix}.antserver.address}"
+					                  server.port="${@{serverprefix}.antserver.port}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="setEndTimePropertyWrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<setEndTimeProperty serverprefix="@{serverprefix}"
+					                  server.address="${@{serverprefix}.antserver.address}"
+					                  server.port="${@{serverprefix}.antserver.port}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	<macrodef name="diffrs">
+		<attribute name="project1"/>
+		<attribute name="project2"/>
+		<attribute name="genrs" />
+		<sequential>
+			<lookupcasesbuildpath case="@{project1}" file.outputprop="pjfile1" dir.outputprop="pjdir1"/>
+			<lookupcasesbuildpath case="@{project2}" file.outputprop="pjfile2" dir.outputprop="pjdir2"/>
+			<if>
+				<equals arg1="@{genrs}" arg2="true" />
+				<then>
+					<ant antfile="${pjfile1}" target="generatedistresources" output="diffprop1.log" dir="${pjfile1}/.."  />
+					<ant antfile="${pjfile2}" target="generatedistresources" output="diffprop2.log" dir="${pjfile2}/.."  />
+				</then>
+			</if>
+			<for param="file">
+				<fileset dir="${pjdir1}/dist" />
+				<sequential>
+					<propertyregex property="basename"
+								   override="true"
+					               input="@{file}"
+					               regexp="^.*[\\/](.+)"
+					               select="\1"/>
+					<if>
+						<resourceexists>
+							<file file="${pjdir1}/dist/${basename}"/>
+						</resourceexists>
+						<then>
+							<echo message="File: ${basename} is in @{project2}"/>
+							<diff file1="${pjdir1}/dist/${basename}" file2="${pjdir2}/dist/${basename}" />
+						</then>
+						<else>
+							<echo message=" ######################################### "/>
+							<echo message="  File: ${basename} not in @{project2} !!!"/>
+							<echo message=" ######################################### "/>
+						</else>
+					</if>
+				</sequential>
+			</for>
+
+			<for param="file">
+				<fileset dir="${pjdir2}/dist" />
+				<sequential>
+					<propertyregex property="basename"
+								   override="true"
+					               input="@{file}"
+					               regexp="^.*[\\/](.+)"
+					               select="\1"/>
+					<if>
+						<resourceexists>
+							<file file="${pjdir2}/dist/${basename}"/>
+						</resourceexists>
+						<then>
+						</then>
+						<else>
+							<echo message=" ######################################### "/>
+							<echo message="  File: ${basename} not in @{project1} !!!"/>
+							<echo message=" ######################################### "/>
+						</else>
+					</if>
+				</sequential>
+			</for>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="diffprop">
+		<attribute name="project1"/>
+		<attribute name="project2"/>
+		<attribute name="prefix1" />
+		<attribute name="prefix2" />
+		<sequential>
+			<local name="pjfile1"/>
+			<local name="pjfile2"/>
+			<local name="pjdir1"/>
+			<local name="pjdir2"/>
+			<local name="pjprop1"/>
+			<local name="pjprop2"/>
+			<property name="pjprop1" value="${basedir}/@{project1}.properties"/>
+			<property name="pjprop2" value="${basedir}/@{project2}.properties"/>
+
+			<lookupcasesbuildpath case="@{project1}" file.outputprop="pjfile1" dir.outputprop="pjdir1" />
+			<ant antfile="${pjfile1}" target="echoprops_tofile" dir="${pjdir1}" inheritall="no">
+				<property name="prefix" value="@{prefix1}"/>
+				<property name="destfile" value="${pjprop1}"/>
+			</ant>
+			<lookupcasesbuildpath case="@{project2}" file.outputprop="pjfile2" dir.outputprop="pjdir2"/>
+			<ant antfile="${pjfile2}" target="echoprops_tofile" dir="${pjdir2}" inheritall="no">
+				<property name="prefix" value="@{prefix2}"/>
+				<property name="destfile" value="${pjprop2}"/>
+			</ant>
+			<replaceregexp file="${pjprop1}"
+			               match="^ant\..*$"
+			               replace=""
+			               byline="true" />
+			<replaceregexp file="${pjprop2}"
+			               match="^ant\..*$"
+			               replace=""
+			               byline="true" />
+			<diff file1="${pjprop1}" file2="${pjprop2}" />
+			<delete file="${pjprop1}" />
+			<delete file="${pjprop2}" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="lookupcasesbuildpath">
+		<attribute name="case" />
+		<attribute name="file.outputprop" />
+		<attribute name="dir.outputprop" />
+		<sequential>
+			<for param="path">
+				<dirset dir="${root.dir}"  includes="**/@{case}"/>
+				<sequential>
+					<property name="@{dir.outputprop}" value="@{path}"/>
+				</sequential>
+			</for>
+
+			<for param="path">
+				<fileset dir="${root.dir}"  includes="**/@{case}/conductor-build.xml"/>
+				<sequential>
+					<property name="@{file.outputprop}" value="@{path}"/>
+				</sequential>
+			</for>
+		</sequential>
+	</macrodef>
+
+
+	<macrodef name="diff">
+		<attribute name="file1" />
+		<attribute name="file2" />
+		<sequential>
+			<echo message=" ######################################### "/>
+			<echo message="  DIFF   @{file1}   @{file2} "/>
+			<echo message=" ######################################### "/>
+			<echo message=""/>
+			<if>
+				<isset property="is.windows" />
+				<then>
+					<property environment="env"/>
+					<exec executable="fc.exe" >
+						<arg value="@{file1}"/>
+						<arg value="@{file2}"/>
+					</exec>
+				</then>
+				<else>
+					<exec executable="diff">
+						<arg value="@{file1}"/>
+						<arg value="@{file2}"/>
+					</exec>
+				</else>
+			</if>
+			<echo message=""/>
+			<echo message=""/>
+			<echo message=""/>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="listcases" >
+		<attribute name="root" />
+		<attribute name="include" default=""/>
+		<sequential>
+			<for param="file">
+				<fileset dir="@{root}" includes="**/*@{include}*/conductor-build.xml" />
+				<sequential>
+					<propertyregex property="case"
+								   override="true"
+					               input="@{file}"
+					               regexp="^.*[\\/](.+)[\\/]conductor-build.xml"
+					               select="\1"/>
+					<echo message="${case}"/>
+				</sequential>
+			</for>
+		</sequential>
+	</macrodef>
+
+
+	<macrodef name="execserver">
+		<attribute name="server.address" />
+		<attribute name="server.port" default="22"/>
+		<attribute name="user.name" />
+		<attribute name="user.password" />
+		<attribute name="basedir" />
+		<attribute name="cmd" />
+		<sequential>
+			<sshexec host="@{server.address}"
+			         port="@{server.port}"
+			         username="@{user.name}"
+	                 password="@{user.password}"
+				     trust="yes"
+			         command="cd @{basedir}; @{cmd}" />
+
+		</sequential>
+	</macrodef>
+
+	<!--
+	<macrodef name="execserver-wrap">
+		<attribute name="serverprefix" />
+		<attribute name="cmd" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<execserver server.address="${@{serverprefix}.antserver.address}"
+					                   user.name="${@{serverprefix}.user.name}"
+					                   user.password="${@{serverprefix}.user.password}"
+					                   basedir="${@{serverprefix}.projecthome}/${@{serverprefix}.basedir}/@{serverprefix}"
+					                   cmd="@{cmd}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	
+	<!--
+	<macrodef name="execantlocal-wrap">
+		<attribute name="serverprefix" />
+		<attribute name="module" />
+		<attribute name="target" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<execserver server.address="${@{serverprefix}.antserver.address}"
+					            user.name="${@{serverprefix}.user.name}"
+					            user.password="${@{serverprefix}.user.password}"
+					            basedir="${@{serverprefix}.projecthome}/${@{serverprefix}.basedir}/@{serverprefix}"
+					            cmd=". ${@{serverprefix}.projecthome}/@{serverprefix}.antserverenv.sh; ant -f ../../modules/@{module}/base-build.xml @{target} -debug -Dbasedir=${@{serverprefix}.projecthome}/${@{serverprefix}.basedir}/@{serverprefix} -Dpropertyfile=build.properties" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+	-->
+	<!-- not used
+	<macrodef name="rsync-wrap">
+		<attribute name="serverprefix" />
+		<sequential>
+			<if>
+				<equals arg1="${@{serverprefix}.enable}" arg2="true" />
+				<then>
+					<rsync server.address="${@{serverprefix}.antserver.address}"
+					       username="${@{serverprefix}.antserver.port}"
+					       todir="${@{serverprefix}.antserver.port}" />
+				</then>
+				<else>
+					<echo message="@{serverprefix} is disabled" />
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="rsync">
+		<attribute name="server.address" />
+		<attribute name="username" />
+		<attribute name="todir" />
+		<sequential>
+			<local name="server.address"/>
+			<property name="server.address" value="@{server.address}" />
+			<exec executable="rsync" dir="." failonerror="true">
+				<arg value="-av"/>
+				<arg value="."/>
+				<arg value="@{username}@${server.address}:@{todir}"/>
+			</exec>
+		</sequential>
+	</macrodef>
+	-->
+</project>

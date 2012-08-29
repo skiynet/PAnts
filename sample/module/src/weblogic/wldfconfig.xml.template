@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<wldf-resource xmlns="http://xmlns.oracle.com/weblogic/weblogic-diagnostics" xmlns:sec="http://xmlns.oracle.com/weblogic/security" xmlns:wls="http://xmlns.oracle.com/weblogic/security/wls" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.oracle.com/weblogic/weblogic-diagnostics http://xmlns.oracle.com/weblogic/weblogic-diagnostics/1.0/weblogic-diagnostics.xsd">
+  <name>@wls.modulename@</name>
+  <harvester>
+    <enabled>true</enabled>
+    <sample-period>@wls.moduleperiod@</sample-period>
+    @wldf.harvestedtype@
+  </harvester>
+</wldf-resource>

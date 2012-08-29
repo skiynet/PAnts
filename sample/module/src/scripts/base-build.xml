@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="scripts-base-build" default="" basedir="./" >
+	<import file="macro-build.xml"/>
+	<property file="${propertyfile}"/>
+	
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	
+	<target name="echop">
+		<echoproperties></echoproperties>
+	</target>
+	
+	<target name="startCpuLoadingScript">
+		<startCpuLoadingScript threadcount="${scripts.cpuloadthreadcount}"/>
+	</target>
+	
+	<target name="stopCpuLoadingScript">
+		<stopCpuLoadingScript />
+	</target>
+	
+	
+	<target name="executeWget">
+		<executeWget url="${scripts.wget.url}" />
+	</target>
+	
+</project>

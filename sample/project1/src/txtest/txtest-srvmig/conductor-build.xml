@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="txtest-srvmig" default="" basedir="./" xmlns:aa="antlib:net.skiy.pants.tasks">
+	
+	<!--
+	<property name="projectsite" value="elb01-txtest" />
+	-->
+	<!--
+	<property environment="env"/>
+	<property name="root.dir" value="${env.ANTCRAWLER_HOME}" />
+	<property name="lib.dir" value="${root.dir}/lib" />
+
+	<import>
+	  <javaresource name="cases-master.build.xml">
+	    <classpath location="${lib.dir}/minicrawler-cases-master.zip"/>
+	  </javaresource>
+	</import>
+-->
+	<import>
+	  <javaresource name="cases-master.build.xml" />
+	</import>
+	
+	<aa:state-list id="list1">
+		<aa:state serverprefix="wls1" module="weblogic" build="adminserver" />
+		<aa:state serverprefix="wls1" module="weblogic" build="nodemanager" />
+	</aa:state-list>
+
+	<target name="enableEnv">
+		<aa:state-sync statelistref="list1" remotetarget="enable" />
+		<antcall target="report"/>
+	</target>
+	
+	<target name="disableEnv">
+		<aa:state-sync statelistref="list1" remotetarget="disable" />
+		<antcall target="report"/>
+	</target>
+</project>

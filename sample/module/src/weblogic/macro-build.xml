@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="weblogic-macro-build" default="" basedir="./" >
+
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<taskdef name="wlserver" classname="weblogic.ant.taskdefs.management.WLServer" />
+	<taskdef name="wlst" classname="weblogic.ant.taskdefs.management.WLSTTask" />
+	<taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy" classpath="${modules.lib.dir}/groovy-all-1.8.6.jar"/>
+	<import file="../util-build.xml"/>
+
+	<macrodef name="start-server">
+		<attribute name="dir" />
+		<attribute name="host" default="localhost" />
+		<attribute name="port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="isAdmin" default="true" />
+		<attribute name="adminserverurl" default="" />
+		<attribute name="extra-server-verbose" default="" />
+		<attribute name="min-heap" default="512m" />
+		<attribute name="max-heap" default="512m" />
+		<attribute name="production-mode-enabled" default="false"/>
+		<attribute name="sleep-seconds-after-start" default="0"/>
+		<attribute name="servername" default="AdminServer"/>
+		<attribute name="domainname" />
+		<attribute name="isJrockit" default="false"/>
+		<attribute name="noExit" default="true"/>
+		<sequential>
+			<echo message="*****************************************" />
+			<echo message="Starting WLS:" />
+			<echo message="*****************************************" />
+			<if>
+				<equals arg1="@{isAdmin}" arg2="true"/>
+				<then>
+					<mkdir dir="@{dir}" />
+					<if>
+						<equals arg1="@{isJrockit}" arg2="false" />
+						<then>
+							<wlserver domainname="@{domainname}"
+							          noExit="@{noExit}"
+							          dir="@{dir}"
+							          host="@{host}"
+							          port="@{port}"
+							          generateConfig="true"
+							          username="@{username}"
+							          password="@{passwd}"
+							          servername="@{servername}"
+							          action="start">
+								<jvmarg line="-Xms@{min-heap} -Xmx@{max-heap} @{extra-server-verbose} 
+    	    		                        -Dweblogic.ProductionModeEnabled=@{production-mode-enabled} -XX:MaxPermSize=256m" />
+							</wlserver>
+						</then>
+						<else>
+							<wlserver domainname="@{domainname}"
+							          noExit="@{noExit}"
+							          dir="@{dir}"
+							          host="@{host}"
+							          port="@{port}"
+							          generateConfig="true"
+							          username="@{username}"
+							          password="@{passwd}"
+							          servername="@{servername}"
+							          action="start">
+								<jvmarg line="-Xms@{min-heap} -Xmx@{max-heap} @{extra-server-verbose} 
+    		                        -Dweblogic.ProductionModeEnabled=@{production-mode-enabled} " />
+							</wlserver>
+						</else>
+					</if>
+					<echo message="Started Admin Server." />
+				</then>
+				<else>
+					<wlserver domainname="@{domainname}" noExit="true" dir="@{dir}" host="@{host}" port="@{port}" username="@{username}" password="@{passwd}" servername="@{servername}" adminserverurl="@{adminserverurl}" action="start">
+						<jvmarg line="-Xms@{min-heap} -Xmx@{max-heap} @{extra-server-verbose} 
+    		                        -Dweblogic.ProductionModeEnabled=@{production-mode-enabled} -XX:MaxPermSize=256m" />
+					</wlserver>
+					<echo message="Started Managed Server. " />
+				</else>
+			</if>
+			<echo message="*********************************" />
+			<echo message="  Server Started " />
+			<echo message="*********************************" />
+			<sleep seconds="@{sleep-seconds-after-start}" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="stop-server">
+		<attribute name="host" default="localhost" />
+		<attribute name="port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="servername" />
+		<sequential>
+			<echo message="*****************************************" />
+			<echo message="Stopping WLS" />
+			<echo message="*****************************************" />
+			<wlserver host="@{host}" port="@{port}" username="@{username}" password="@{passwd}" action="shutdown" servername="@{servername}" forceshutdown="true" />
+			<echo message="*********************************" />
+			<echo message="  Server Stopped " />
+			<echo message="*********************************" />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="createServer">
+		<attribute name="servername" />
+		<attribute name="listen-address" default="localhost"/>
+		<attribute name="listen-port"  default="7010"/>
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="url" default="t3://localhost:7001" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+			    	print 'In the target loop' 
+			    	connect('@{username}','@{passwd}','@{url}') 
+			    	edit()
+			    	startEdit()
+			    	svrs = cmo.getServers() 
+			    	print 'Servers in the domain are' 
+			    	for x in svrs: print x.getName()
+			    	if getMBean('/Servers/@{servername}') == None:
+			    	        cd('/')
+			    	        cmo.createServer('@{servername}')
+			    	        cd('/Servers/@{servername}')
+			    	        cmo.setListenAddress('@{listen-address}')
+			    	        cmo.setListenPort('@{listen-port}')
+			
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="executewlst">
+		<attribute name="filename" />
+		<attribute name="admin.host" default="localhost" />
+		<attribute name="admin.port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<sequential>
+			<wlst debug="true"
+			      failOnError="true"
+			      fileName="@{filename}"
+			      executeScriptBeforeFile="true">
+
+				<script replaceProperties="true">
+					connect('@{username}','@{passwd}','t3://@{admin.host}:@{admin.port}') 
+				</script>
+			</wlst>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generatewldfmodulefile">
+		<attribute name="wldf.harvestedtype.selector" />
+		<attribute name="modulename" />
+		<attribute name="modulefile" />
+		<attribute name="moduleperiod" />
+		<sequential>
+			<property file="${weblogic.module.dir}/wls.harvestedtype.properties"/>
+			<var name="harvesttypeall" value=""/>
+			<for list="@{wldf.harvestedtype.selector}" param="harvesttype">
+				<sequential>
+					<var name="harvesttypeall" value="${harvesttypeall}  ${@{harvesttype}}"/>
+				</sequential>
+			</for>
+			<property name="wldf.harvestedtype" value="${harvesttypeall}"/>
+			<copy file="${weblogic.module.dir}/wldfconfig.xml.template" tofile="${wls.domain.dir}/config/diagnostics/@{modulefile}" overwrite="true">
+				<filterset>
+					<filter token="wls.modulename" value="@{modulename}" />
+					<filter token="wls.moduleperiod" value="@{moduleperiod}" />
+					<filter token="wldf.harvestedtype" value="${wldf.harvestedtype}" />
+				</filterset>
+			</copy>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="wldfmodule-enable">
+		<attribute name="admin.host" default="localhost" />
+		<attribute name="admin.port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="modulename" />
+		<attribute name="modulefile" />
+		<attribute name="modulecomment" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					connect('@{username}','@{passwd}','t3://@{admin.host}:@{admin.port}') 
+					edit()
+					startEdit()
+					cd('/')
+					if getMBean('/WLDFSystemResources/@{modulename}') == None:
+						cmo.createWLDFSystemResource('@{modulename}')
+					cd('/WLDFSystemResources/@{modulename}')
+					cmo.setDescription('@{modulecomment}')
+					cmo.setSourcePath('./config/diagnostics/@{modulefile}')
+					svrs = getMBean('/').getServers() 
+					for x in svrs:
+						if x.getName() != 'AdminServer':
+							cmo.addTarget(x)
+					save()
+					activate()
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="wldfmodule-disable">
+		<attribute name="admin.host" default="localhost" />
+		<attribute name="admin.port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="modulename" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					connect('@{username}','@{passwd}','t3://@{admin.host}:@{admin.port}') 
+					edit()
+					startEdit()
+					cd('/')
+					cd('/WLDFSystemResources/@{modulename}')
+					svrs = getMBean('/').getServers() 
+					for x in svrs:
+					if x.getName() != 'AdminServer':
+						cmo.removeTarget(x)
+					save()
+					activate()
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="wldfmodule-clear">
+		<attribute name="admin.host" default="localhost" />
+		<attribute name="admin.port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					connect('@{username}','@{passwd}','t3://@{admin.host}:@{admin.port}') 
+					edit()
+					startEdit()
+					cd('/')
+					modules = getMBean('/').getWLDFSystemResources()
+					for x in modules:
+						cmo.destroyWLDFSystemResource(x)
+					save()
+					activate()
+				</script>
+			</wlst>
+		</sequential>
+	</macrodef>
+
+
+	<macrodef name="exportHarvestDataFromServer">
+		<attribute name="host" default="localhost" />
+		<attribute name="port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="query" default="" />
+		<attribute name="exportfile" />
+		<attribute name="beginoffsetminutes" default="-1"/>
+		<attribute name="endoffsetminutes" default="-1" />
+		<attribute name="begintime-mills" default="-1" />
+		<attribute name="endtime-mills" default="-1" />
+		<sequential>
+			<if>
+				<equals arg1="@{begintime-mills}" arg2="-1" />
+				<then>
+					<groovy>
+						def end = System.currentTimeMillis()
+						def start = end - (1000 * 60 * @{beginoffsetminutes})
+						project.setProperty("exportHarvestDataFromServer-start", "$start")
+						project.setProperty("exportHarvestDataFromServer-end", "$end")
+					</groovy>
+				</then>
+				<else>
+					<property name="exportHarvestDataFromServer-start" value="@{begintime-mills}"/>
+					<property name="exportHarvestDataFromServer-end" value="@{endtime-mills}"/>
+				</else>
+			</if>
+			<!--
+			<tstamp>
+			      <format property="start"
+			              pattern="S"
+			              offset="-@{beginoffsetminutes}"
+			              unit="minute" />
+			</tstamp>
+			<tstamp>
+				<format property="end"
+				        pattern="S" />
+			</tstamp>
+			-->
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					connect('@{username}','@{passwd}','t3://@{host}:@{port}') 
+					exportDiagnosticDataFromServer(logicalName="HarvestedDataArchive", exportFileName="@{exportfile}", beginTimestamp=${exportHarvestDataFromServer-start}, endTimestamp=${exportHarvestDataFromServer-end}, query="@{query}") 
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="shapeHarvestExportData">
+		<attribute name="exportfile" />
+		<sequential>
+			<shellscript shell="bash" dir="." failonerror="true">
+				<![CDATA[
+				cat @{exportfile} | grep -v  DatabaseProductVersion > @{exportfile}.2
+				cat @{exportfile}.2 \
+				| sed -e "s/<DataRecord>//g" \
+				| sed -e "s/<\/DataRecord>//g" \
+				| sed -e "s/<ColumnData>//g" \
+				| sed -e "s/<\/ColumnData>/|/g" \
+				| sed -e "s/ //g" > @{exportfile}.csv
+				sort -t \| -k 7,7 -k 1,1n @{exportfile}.csv > @{exportfile}.sorted.csv
+				]]>
+				exit $?
+			</shellscript>
+		</sequential>
+	</macrodef>
+	
+	
+	<macrodef name="setupNodeManagerHome">
+		<attribute name="nodemanager.home" />
+		<attribute name="javahome" />
+		<attribute name="nodemanager.address" />
+		<attribute name="nodemanager.port" />
+		<attribute name="nodemanager.name" />
+		<attribute name="nodemanager.migration-interface" default="" />
+		<attribute name="nodemanager.migration-netmask" default=""/>
+		<sequential>
+			<mkdir dir="@{nodemanager.home}" />
+			<!--
+			<touch file="@{nodemanager.home}/nodemanager.domains" />
+			-->
+			<copy file="${weblogic.module.dir}/nodemanager.properties.template" tofile="@{nodemanager.home}/nodemanager.properties" overwrite="true">
+				<filterset>
+					<filter token="wls.nodemanager.home" value="@{nodemanager.home}" />
+					<filter token="javahome" value="@{javahome}" />
+					<filter token="wls.nodemanager.address" value="@{nodemanager.address}" />
+					<filter token="wls.nodemanager.port" value="@{nodemanager.port}" />
+					<filter token="wls.nodemanager.name" value="@{nodemanager.name}" />
+					<filter token="wls.nodemanager.migration-interface" value="@{nodemanager.migration-interface}" />
+					<filter token="wls.nodemanager.migration-netmask" value="@{nodemanager.migration-netmask}" />
+				</filterset>
+			</copy>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="enrollNodeManager">
+		<attribute name="admin.host" default="localhost" />
+		<attribute name="admin.port" default="7001" />
+		<attribute name="username" default="weblogic" />
+		<attribute name="passwd" default="welcome1" />
+		<attribute name="domaindir" />
+		<attribute name="nodemanager.home" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					connect('@{username}','@{passwd}','t3://@{admin.host}:@{admin.port}')
+					nmEnroll('@{domaindir}','@{nodemanager.home}')
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+		
+	<macrodef name="createdomain">
+		<attribute name="wls.server.dir" />
+		<attribute name="wls.domain.dir" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					readTemplate('@{wls.server.dir}/common/templates/domains/wls.jar')
+					setOption('OverwriteDomain', 'true')
+					writeDomain('@{wls.domain.dir}')
+					closeTemplate()
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+		
+	<macrodef name="setServerStartArgs">
+		<attribute name="username" />
+		<attribute name="passwd" />
+		<attribute name="admin.host" />
+		<attribute name="admin.port" />
+		<attribute name="servername" />
+		<attribute name="argline" />
+		<sequential>
+			<wlst debug="true" failOnError="true">
+				<script replaceProperties="true">
+					print 'In the target loop' 
+					connect('@{username}','@{passwd}','t3://@{admin.host}:@{admin.port}') 
+					edit()
+					startEdit()
+					cd('/Servers/@{servername}/ServerStart/@{servername}')
+					cmo.setArguments('@{argline}')
+					activate()
+			    </script>
+			</wlst>
+		</sequential>
+	</macrodef>
+</project>

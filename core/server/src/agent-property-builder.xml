@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<antlib>
+
+	<macrodef name="loadinstallproperties"
+		description="match site-server.mapping and generate properties">
+		<sequential>
+			<propertyset id="sitemappings">
+				<propertyref regex="^sitemapping\..*$" />
+			</propertyset>
+			<echo message="${toString:sitemappings}" level="debug" />
+			<for list="${toString:sitemappings}" param="prop">
+				<sequential>
+					<local name="lserverprefix" />
+					<local name="site-file" />
+					<local name="site-dir" />
+					<propertyregex property="lserverprefix" override="true"
+						input="@{prop}" regexp="^\s*sitemapping\.([^\.]*)=" select="\1" />
+					<propertyregex property="site-file" override="true"
+						input="@{prop}" regexp="^.*=(.*)" select="\1" />
+
+					<property file="${root.dir}/projectsite/${site-file}"
+						prefix="${lserverprefix}" />
+					<echo
+						message="site-file: ${root.dir}/projectsite/${site-file} loaded as ${lserverprefix}"
+						level="info" />
+
+					<dirname property="site-dir" file="${root.dir}/projectsite/${site-file}" />
+					<property file="${site-dir}/site.antcrawler.properties"
+						prefix="${lserverprefix}" />
+					<!-- agent side basedir . To be refactored to ${lserverprefix}.basedir/${lserverprefix} -->
+					<property name="${lserverprefix}.basedir" value="${ant.project.name}" />
+					<!-- <echoproperties taskname="site-properties" prefix="${lserverprefix}"/> -->
+				</sequential>
+			</for>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="loadprojectproperties" >
+		<sequential>
+			<groovy description="recursive import of conductor-build.xml and conductor-build.properties" taskname="recurse-project-read">
+			<![CDATA[
+				def nowdir = new File(properties['basedir'])
+				println "basedir: " + nowdir
+				
+				while ( nowdir.getName() != "cases" ) {
+					def nowdirbuildproperties = new File(nowdir.canonicalPath + "/conductor-build.properties")
+					def nowdirbuildxml = new File(nowdir.canonicalPath + "/conductor-build.xml")
+					
+					if ( nowdirbuildproperties.exists() ) {
+						ant.property(file:"${nowdirbuildproperties.canonicalPath}")
+						//println "imported ${nowdirbuildproperties.canonicalPath}"
+					} else {
+						//println "nowdirbuildproperties does not exist: " + nowdirbuildproperties.canonicalPath
+					}
+					
+					if ( nowdirbuildxml.exists() ) {
+						ant.import(file:"${nowdirbuildxml.canonicalPath}")
+						//println "imported ${nowdirbuildxml.canonicalPath}"
+					} else {
+						//println "nowdirbuildxml does not exist: " + nowdirbuildxml.canonicalPath
+					}
+				
+					nowdir = new File(nowdir.parent) 
+					//println "nowdir.getName(): "+ nowdir.getName()
+				}
+						
+	
+				]]>
+			</groovy>
+		</sequential>
+	</macrodef>
+
+
+	<macrodef name="loadproperties">
+		<sequential>
+			<loadinstallproperties />
+			<loadprojectproperties />
+		</sequential>
+	</macrodef>
+
+	<macrodef name="generate-properties">
+		<attribute name="serverprefix" />
+		<attribute name="todir" />
+		<sequential>
+			<echo message="I am here @{todir}/@{serverprefix}.properties"/>
+			<echoproperties destfile="@{todir}/@{serverprefix}.properties">
+				<!-- all will be overrided by server -->
+				<propertyset>
+					<propertyref prefix="@{serverprefix}." />
+					<mapper type="glob" from="@{serverprefix}.*" to="*" />
+				</propertyset>
+				<propertyset>
+					<propertyref prefix="all." />
+					<mapper type="glob" from="all.*" to="*" />
+				</propertyset>
+			</echoproperties>
+		</sequential>
+	</macrodef>
+	
+	<macrodef name="buildproperties">
+		<sequential>
+			<loopservers parallel="false">
+				<taskforeachserver>
+					<generate-properties serverprefix="${loopserver.serverprefix}"
+						todir="${basedir}/dist" />
+				</taskforeachserver>
+			</loopservers>
+		</sequential>
+	</macrodef>
+
+</antlib>

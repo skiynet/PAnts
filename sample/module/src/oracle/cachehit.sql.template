@@ -1,0 +1,21 @@
+SET SERVEROUTPUT ON;
+     DECLARE
+       d_gets NUMBER;
+       c_gets NUMBER;
+       p_reads NUMBER;
+       d_date VARCHAR(20);
+       result NUMBER;
+     BEGIN
+       SELECT VALUE INTO d_gets FROM V$SYSSTAT
+         WHERE NAME = 'db block gets';
+       SELECT VALUE INTO c_gets FROM V$SYSSTAT
+         WHERE NAME = 'consistent gets';
+       SELECT VALUE INTO p_reads FROM V$SYSSTAT
+         WHERE NAME = 'physical reads';
+       select to_char(sysdate, 'YYYY/MM/DD HH24:MI:SS') INTO d_date from dual;
+       result :=
+         ROUND((1 - (p_reads / (c_gets + d_gets))),3) * 100;
+       DBMS_OUTPUT.PUT_LINE(
+          d_date || ',' || result || '%' || ',' || d_gets || ',' || c_gets || ',' || p_reads);
+     END;
+     /

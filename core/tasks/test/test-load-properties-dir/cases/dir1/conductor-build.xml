@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="dir1" default="" basedir="./"
+	xmlns:pants="antlib:net.skiy.pants.tasks">
+	
+	<!-- 
+	<property name="build.dir" value="../../../../build" />
+	 -->
+	<taskdef uri="antlib:net.skiy.pants.tasks" resource="net/skiy/pants/tasks/antlib.xml">
+		<classpath>
+			<dirset dir="${build.dir}">
+				<include name="classes/**" />
+			</dirset>
+		</classpath>
+	</taskdef>
+	
+
+</project>

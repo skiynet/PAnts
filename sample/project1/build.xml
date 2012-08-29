@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<project name="pants.sample.project1" default="publish-local" xmlns:ivy="antlib:org.apache.ivy.ant">
+	<property file="build.properties"/>
+	<import file="${pants.build.dir}/common.xml"/>
+	
+	<target name="build" depends="set-revision">
+		<!--
+		<ivy:resolve revision="${ivy.new.revision}" conf="dist"/>
+		<ivy:retrieve sync="true"/>
+		<ivy:deliver deliverpattern="distrib/ivys/[artifact].[ext]"/>
+		<ivy:retrieve sync="true" pattern="${lib.dir}/[conf]/[type]/[artifact]-[revision].[ext]" />
+		-->
+		
+    	<mkdir dir="${build.dir}"/>
+		
+		<zip destfile="${build.dir}/${ivy.module}-${ivy.revision}.zip" basedir="${src.dir}" >
+		</zip>
+	</target>
+	
+</project>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="jmeter-base-build" default="help" basedir="./" >
+	<import file="macro-build.xml"/>
+	<property file="${propertyfile}"/>
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<taskdef name="jmeter" classname="org.programmerplanet.ant.taskdefs.jmeter.JMeterTask"/>
+
+	<target name="help">
+	</target>
+
+
+	<target name="enableJmeterTestPlan">
+
+	</target>
+
+	<target name="startJmeterTest">
+		<echo message="Running test" />
+		<!-- data will be appended, so delete first -->
+		<delete file="${cases.logdir}/${serverprefix}.jmeterlog.xml" />
+		
+		<jmeter jmeterhome="${jmeter.home}"
+		        resultlog="${cases.logdir}/${serverprefix}.jmeterlog.xml"
+		        testplan="jmetertestplan.jmx"
+			runremote="${jmeter.runremote}">
+			<property name="request.threads" value="" />
+			<property name="request.duration" value="" />
+			<property name="simpledatawriter.outfile" value="${basedir}/log/${serverprefix}.simpledatawriter.csv"/>
+			<property name="remote_hosts" value="${jmeter.remote-hosts}"/>
+			<property name="mode" value="HOLD"/>
+			<jvmarg value="-Xmx${jmeter.Xmx}"/>
+			<jvmarg value="-Xms${jmeter.Xms}"/>
+		</jmeter>
+	</target>
+	
+	<target name="test">
+		<echoproperties/>
+	</target>
+	
+	<target name= "stopJmeterTest">
+		<echo message="Stopping test" />
+		<exec executable="${jmeter.stop}" />
+	</target>
+	
+	<target name= "enableJmeterServer">
+		<mkdir dir="${basedir}/1099"/>
+		<mkdir dir="${basedir}/2010"/>
+		<mkdir dir="${basedir}/2011"/>
+		<startjmeterserver dir="${basedir}/1099" jmeterhome="${jmeter.home}" port="1099" mem="${jmeter.Xmx}" />
+		<startjmeterserver dir="${basedir}/2010" jmeterhome="${jmeter.home}" port="2010" mem="${jmeter.Xmx}" />
+		<startjmeterserver dir="${basedir}/2011" jmeterhome="${jmeter.home}" port="2011" mem="${jmeter.Xmx}" />
+	</target>
+		
+	<target name= "disableJmeterServer">
+		<stopjmeterserver port="1099" />
+		<stopjmeterserver port="2010" />
+		<stopjmeterserver port="2011" />
+	</target>
+
+	<target name= "generateReport">
+		<!--XSTLを使ってHTML形式にレポーティング -->
+		<echo message="Generating report" />
+		<local name="jmeterlogexist"/>
+		<available file="${cases.logdir}/${serverprefix}.jmeterlog.xml" property="jmeterlogexist"/>
+		<if>
+			<isset property="jmeterlogexist" />
+			<then>
+				<xslt in="${cases.logdir}/${serverprefix}.jmeterlog.xml"
+			                      out="${cases.logdir}/${serverprefix}.jmeterreport.html"
+			                      style="${jmeter.reportstyle}" />
+			</then>
+		</if>
+		<local name="simpledatalogexist"/>
+		<available file="${cases.logdir}/${serverprefix}.simpledatawriter.csv" property="simpledatalogexist"/>
+		<if>
+			<isset property="simpledatalogexist" />
+			<then>
+				<simpledatareport in="${cases.logdir}/${serverprefix}.simpledatawriter.csv"
+			                      out="${cases.logdir}/${serverprefix}.simpledatawriter_converted.csv" />
+			</then>
+		</if>
+	</target>
+
+
+</project>

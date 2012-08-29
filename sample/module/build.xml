@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<project name="net.skiy" default="publish-local" xmlns:ivy="antlib:org.apache.ivy.ant">
+
+	<property file="build.properties"/>
+	<property file="${pants.build.dir}/deploy.properties"/>
+	<import file="${pants.build.dir}/common.xml"/>
+		
+	<target name="build" depends="set-revision">
+		<!--
+		<ivy:resolve revision="${ivy.new.revision}" />
+		<ivy:deliver deliverpattern="distrib/ivys/[artifact].[ext]" conf="include-dep"/>
+
+		<ivy:retrieve sync="true" pattern="${lib.dir}/[conf]/[type]/[artifact]-[revision].[ext]" />
+				-->
+    	<mkdir dir="${build.dir}"/>
+		
+		<zip destfile="${build.dir}/${ivy.module}-${ivy.revision}.zip" >
+			<zipfileset dir="${src.dir}" prefix="${pants.module.ant.dir}" />
+			<zipfileset dir="${lib.dir}/include-dep/jar" prefix="${pants.module.lib.dir}"/>
+		</zip>
+	</target>
+
+</project>

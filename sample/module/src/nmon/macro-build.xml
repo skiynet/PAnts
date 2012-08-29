@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="EUC-JP"?>
+<project name="nmon-macro-build" default="" basedir="./" >
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<import file="../util-build.xml"/>
+
+	<macrodef name="startNmonLogging">
+		<attribute name="outfile"/>
+		<sequential>
+			<chmod file="${projecthome}/modules/nmon/nmon_x86_64_rhel54" perm="ug+rx"/>
+			<exec executable="${projecthome}/modules/nmon/nmon_x86_64_rhel54" dir="${basedir}">
+				<arg line="-F @{outfile} -c 900 -s 2 -N"/>
+			</exec>
+		</sequential>
+	</macrodef>
+
+	<macrodef name="stopNmonLogging">
+		<sequential>
+			<killproc procstring="nmon"/>
+		</sequential>
+	</macrodef>
+
+</project>

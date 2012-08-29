@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="generic-base-build" default="" basedir="./" >
+	<property file="${propertyfile}"/>
+
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+	<taskdef name="groovy" classname="org.codehaus.groovy.ant.Groovy"/>
+
+	<target name="setStartTimeProperty">
+		<local name="now"/>
+		<tstamp>
+			<format property="now"
+			        pattern="HH:mm:ss"/>
+		</tstamp>
+		
+		<groovy>
+			def start = System.currentTimeMillis()
+			project.setProperty("starttime-mills", "$start")
+		</groovy>
+		
+		<echo file="${cases.logdir}/${serverprefix}.testtime.log" message="starttime=${now}${line.separator}" />
+		<echo append="true" file="${cases.logdir}/${serverprefix}.testtime.log" message="starttime-mills=${starttime-mills}${line.separator}" />
+	</target>
+
+	<target name="setEndTimeProperty">
+		<tstamp>
+			<format property="endtime"
+                            pattern="HH:mm:ss"/>
+		</tstamp>
+		
+		<groovy>
+			def end = System.currentTimeMillis()
+			project.setProperty("endtime-mills", "$end")
+		</groovy>
+
+		<property file="${cases.logdir}/${serverprefix}.testtime.log" />
+		<groovy>
+                    Date start = Date.parse("HH:mm:ss", "${properties.starttime}")
+                    Date end = Date.parse("HH:mm:ss", "${properties.endtime}")
+                    use(groovy.time.TimeCategory) {
+                        def duration = end - start
+                        def duration_min = duration.minutes + 1
+                        properties.duration_min = "${duration_min}"
+                    }
+        </groovy>
+		<echo append="true" file="${cases.logdir}/${serverprefix}.testtime.log" message="endtime=${endtime}${line.separator}" />
+		<echo append="true" file="${cases.logdir}/${serverprefix}.testtime.log" message="endtime-mills=${endtime-mills}${line.separator}" />
+		<echo append="true" file="${cases.logdir}/${serverprefix}.testtime.log" message="duration_min=${duration_min}${line.separator}" />
+	</target>
+	
+
+</project>

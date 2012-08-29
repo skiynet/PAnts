@@ -1,0 +1,23 @@
+<ivy-module version="2.0">
+    <info organisation="net.skiy" module="pants.module.sample"/>
+    <configurations defaultconf="include-dep">
+    	<conf name="include-dep" description="modules"/>
+    </configurations>
+    <publications>
+    	<artifact name="pants.module.sample" type="module" ext="zip" conf="include-dep"/>
+    </publications>
+    <dependencies>
+    	<dependency org="local" name="ojdbc" rev="5" conf="include-dep->default"/>
+    	<dependency org="local" name="ant-jmeter" rev="1.1.1" conf="include-dep->default"/>
+    	<dependency org="local" name="incanto" rev="0.2.4" conf="include-dep->default"/>
+    	<dependency org="org.codehaus.groovy" name="groovy-all" rev="1.8.6" conf="include-dep->runtime" >
+    		<artifact name="groovy-all" type="jar" />
+    	</dependency>
+    	<dependency org="ant-contrib" name="ant-contrib" rev="1.0b3" transitive="false" conf="include-dep->default" >
+    		<artifact name="ant-contrib" type="jar" />
+    	</dependency>
+    	<!-- 
+    	<dependency org="org.apache.ant" name="ant" rev="1.8.2" conf="include-dep->default"/>
+    	 -->
+    </dependencies>
+</ivy-module>

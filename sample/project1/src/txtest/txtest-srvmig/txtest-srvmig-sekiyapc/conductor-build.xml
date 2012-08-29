@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="txtest-srvmig-sekiyapc" default="" basedir="./">
+	<property environment="env"/>
+	<property name="root.dir" value="${env.ANTCRAWLER_HOME}" />
+	<import file="${root.dir}/cases/cases-master.build.xml" />
+
+
+</project>

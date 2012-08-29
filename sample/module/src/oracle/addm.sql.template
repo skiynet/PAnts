@@ -1,0 +1,14 @@
+var tname VARCHAR2(60)
+BEGIN
+  :tname := 'temptask';
+  DBMS_ADDM.ANALYZE_DB(:tname, @beginsnapid@, @endsnapid@);
+END;
+/
+SET LONG 100000
+SET PAGESIZE 50000
+SELECT DBMS_ADDM.GET_REPORT(:tname) FROM DUAL;
+
+BEGIN
+  DBMS_ADDM.DELETE (:tname);
+END;
+/

@@ -1,0 +1,24 @@
+<project name="AntCrawlerTasks" default="publish-local" xmlns:ivy="antlib:org.apache.ivy.ant">
+	<property file="build.properties"/>
+	<import file="${pants.build.dir}/common.xml"/>
+	
+	<target name="build" depends="set-revision">
+        <mkdir dir="${classes.dir}" />
+        <javac srcdir="${src.dir}" destdir="${classes.dir}" classpathref="lib.path.id" debug="true" includeAntRuntime="false"/>
+		<copy todir="${classes.dir}">
+			<fileset dir="${src.dir}" excludes="**/*.java" />
+		</copy>
+		<antcall target="jar"/>
+	</target>
+	
+    <target name="jar" description="--> make a jar file for this project">
+        <jar destfile="${build.dir}/${ivy.module}-${ivy.revision}.jar">
+            <fileset dir="${classes.dir}" />
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Build-Version" value="${version}" />
+            </manifest>
+        </jar>
+    </target>
+		
+</project>

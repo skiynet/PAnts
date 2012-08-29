@@ -1,0 +1,56 @@
+<project name="test-load-project-properties" xmlns:au="antlib:org.apache.ant.antunit" xmlns:pants="antlib:net.skiy.pants.tasks" default="go">
+	<property name="build.dir" value="${basedir}/../build" />
+	<property name="test.lib.dir" value="../lib/test/jar" />
+
+	<taskdef uri="antlib:net.skiy.pants.tasks"
+	         resource="net/skiy/pants/tasks/antlib.xml">
+		<classpath>
+			<dirset dir="${build.dir}">
+				<include name="classes/**" />
+			</dirset>
+		</classpath>
+	</taskdef>
+
+	<taskdef uri="antlib:org.apache.ant.antunit"
+	         resource="org/apache/ant/antunit/antlib.xml" classpath="${test.lib.dir}/ant-antunit-1.2.jar">
+	</taskdef>
+
+
+	<target name="build">
+		<javac srcdir="../src" destdir="../build/classes" debug="true" includeAntRuntime="false">
+			<classpath>
+				<fileset dir="../lib/build/jar" includes="*.jar" />
+			</classpath>
+		</javac>
+		<copy todir="../build/classes">
+			<fileset dir="../src" excludes="**/*.java" />
+		</copy>
+	</target>
+
+	<target name="go" depends="build">
+		<au:antunit>
+			<fileset file="${ant.file}" />
+			<au:plainlistener loglevel="debug"/>
+		</au:antunit>
+	</target>
+
+	<target name="setUp">
+		<echo message="wls1=site.weblogic.properties${line.separator}" file="site-server.mapping" />
+		<echo message="rac1=site.oracle.properties${line.separator}" file="site-server.mapping" append="true"/>
+		
+		<mkdir dir="projectsite"/>
+		<echo message="weblogic.prop=val" file="projectsite/site.weblogic.properties" />
+		<echo message="oracle.prop=val" file="projectsite/site.oracle.properties" />
+	</target>
+
+
+	<target name="test1" description="current env value $ANTCRAWLER_HOME will be used to search site-server.mapping.
+		If $ANTCRAWLER_HOME env is not set, then current directory will be used.
+		Also $ANTCRAWLER_HOME/projectsite will be used to search site files.">
+		<property name="project.basedir" value="${basedir}"/>
+		<pants:load-install-properties />
+		<au:assertPropertySet name="wls1.weblogic.prop"/>
+		<au:assertPropertySet name="rac1.oracle.prop"/>
+	</target>
+
+</project>
